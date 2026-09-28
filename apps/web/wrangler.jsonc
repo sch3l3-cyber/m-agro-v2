@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Ime NAMJERNO različito od postojećih workera na računu (magro-wms, fragrant-flower-75cd)
+  "name": "m-agro-v2-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "m-agro-v2-web" }]
+  // NEXT_PUBLIC_* se ugrađuju u build (GitHub Actions → Variables), ne ovdje.
+  // Tajne (Faza 1+): `wrangler secret put <IME>` — NIKAD u ovaj fajl.
+}

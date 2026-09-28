@@ -1,0 +1,1 @@
+{ "extends": "@m-agro/tsconfig/base.json", "include": ["src", "tests"] }

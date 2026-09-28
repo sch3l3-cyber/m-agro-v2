@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-zemlja-50: #f7f5ef;
+  --color-zemlja-900: #2b2a24;
+  --color-list-500: #3f8f3a;
+  --color-list-600: #2f7a2c;
+  --color-list-700: #25621f;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-zemlja-50);
+  color: var(--color-zemlja-900);
+}

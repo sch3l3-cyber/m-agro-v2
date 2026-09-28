@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Ime NAMJERNO različito od postojećih workera (magro-wms, fragrant-flower-75cd)
+  "name": "m-agro-v2-sentinel",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:3000"
+  }
+  // Tajne (Faza 2): wrangler secret put SENTINEL_CLIENT_ID / SENTINEL_CLIENT_SECRET
+  // KV (rate limit) i R2 (NDVI cache) bindingi dolaze u Fazi 2.
+}

@@ -1,0 +1,9 @@
+packages:
+  - apps/web
+  - apps/workers/*
+  - packages/*
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd
+  - unrs-resolver
