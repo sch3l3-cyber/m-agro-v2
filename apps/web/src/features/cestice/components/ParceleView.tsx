@@ -60,10 +60,9 @@ export function ParceleView({
   useEffect(
     () =>
       useMapStore.subscribe((st, prev) => {
-        if (st.odabranaId && st.odabranaId !== prev.odabranaId) {
-          setRasireno(false);
-          if (st.izvor === 'lista') setMobilniPrikaz('karta');
-        }
+        if (st.odabirBr === prev.odabirBr || !st.odabranaId) return;
+        if (st.odabranaId !== prev.odabranaId) setRasireno(false);
+        if (st.izvor === 'lista') setMobilniPrikaz('karta');
       }),
     [],
   );

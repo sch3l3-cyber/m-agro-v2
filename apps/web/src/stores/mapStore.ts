@@ -16,6 +16,8 @@ export type VlasnikSloja = 'ndvi' | 'vra';
 interface MapState {
   odabranaId: string | null;
   izvor: 'karta' | 'lista' | null;
+  /** raste pri SVAKOM odabiru (i ponovnom kliku na istu česticu) — mobitel tada prebacuje na kartu */
+  odabirBr: number;
   /** što karta TRENUTNO prikazuje = slojevi[aktivni] (Karta se pretplaćuje samo na ovo) */
   overlay: Overlay | null;
   /** svaki tab čuva svoj sloj; prebacivanje taba samo mijenja koji se prikazuje (bez ponovnog dohvata) */
@@ -34,6 +36,7 @@ export const useMapStore = create<MapState>()((set, get) => ({
   odabranaId: null,
   izvor: null,
   overlay: null,
+  odabirBr: 0,
   slojevi: { ndvi: null, vra: null },
   aktivni: 'ndvi',
   postaviSloj: (vlasnik, o) => {
@@ -53,7 +56,7 @@ export const useMapStore = create<MapState>()((set, get) => ({
       get().postaviSloj('ndvi', null);
       get().postaviSloj('vra', null);
     }
-    set({ odabranaId: id, izvor });
+    set({ odabranaId: id, izvor, odabirBr: get().odabirBr + 1 });
   },
   /** NDVI tab (zadržano ime radi postojećeg koda) */
   postaviOverlay: (o) => get().postaviSloj('ndvi', o),

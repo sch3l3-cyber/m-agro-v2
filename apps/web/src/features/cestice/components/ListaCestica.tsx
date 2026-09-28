@@ -51,7 +51,7 @@ export function ListaCestica({ cestice }: { cestice: Cestica[] }) {
               role="option"
               aria-selected={odabrana}
               tabIndex={0}
-              onClick={() => odaberi(odabrana ? null : c.id, 'lista')}
+              onClick={() => odaberi(c.id, 'lista')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && odaberi(c.id, 'lista')}
               className={`mb-2 flex cursor-pointer items-center gap-3 rounded-xl p-2 ring-1 transition-colors ${
                 odabrana ? 'bg-yellow-50 ring-2 ring-yellow-400' : 'bg-white ring-zinc-200 hover:bg-zinc-50'
