@@ -26,3 +26,15 @@ body {
     height: 44px;
   }
 }
+
+/* Ispis kartice čestice: A4, bez pozadina aplikacije */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+}

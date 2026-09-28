@@ -92,7 +92,19 @@ export function OperacijeTab({
 
   return (
     <div className="flex flex-col gap-2">
-      {smijeUpisivati && <Button onClick={() => setForma(true)}>+ Dodaj operaciju</Button>}
+      <div className="flex gap-2">
+        {smijeUpisivati && (
+          <Button onClick={() => setForma(true)} className="flex-1">
+            + Dodaj operaciju
+          </Button>
+        )}
+        <a
+          href={`/ispis/cestica/${cesticaId}?gosp=${gospodarstvoId}`}
+          className="inline-flex min-h-12 items-center justify-center rounded-lg px-4 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10"
+        >
+          Ispis / PDF
+        </a>
+      </div>
       {stanje.status === 'ucitavam' && <p className="text-sm text-zinc-500">Učitavam operacije…</p>}
       {stanje.status === 'greska' && (
         <p role="alert" className="text-sm text-red-700">
