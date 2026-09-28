@@ -1,7 +1,7 @@
 'use client';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { GeolocateControl, Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import type { Cestica } from '@/lib/db';
 import { useMapStore } from '@/stores/mapStore';
@@ -142,6 +142,41 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
     if (mapRef.current) postaviPodatke(mapRef.current, cestice);
   }, [cestice]);
 
+  // Let do čestice tako da je vidljiva IZNAD mobilne ploče (donjiRub)
+  const prikaziCesticu = useCallback(
+    (map: MlMap, id: string | null, duration: number) => {
+      const c = cestice.find((x) => x.id === id);
+      const b = c && granice([c]);
+      if (!b) return;
+      const rub = useMapStore.getState().donjiRub;
+      const h = map.getContainer().clientHeight;
+      // premala vidljiva visina (npr. ploča raširena) → ne diraj kartu
+      if (h - rub < 120) return;
+      map.fitBounds(b, { padding: { top: 40, left: 40, right: 40, bottom: 40 + rub }, maxZoom: 17, duration });
+    },
+    [cestice],
+  );
+
+  // Kontejner mijenja veličinu bez window resize (mobilni tab Karta/Lista, desni stupac) → map.resize()
+  useEffect(() => {
+    const el = mapRef.current?.getContainer();
+    if (!el) return;
+    const ro = new ResizeObserver(() => mapRef.current?.resize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
+  // Mobilna ploča promijenila visinu → zadrži odabranu česticu vidljivom
+  useEffect(
+    () =>
+      useMapStore.subscribe((st, prev) => {
+        const map = mapRef.current;
+        if (!map || st.donjiRub === prev.donjiRub || !st.odabranaId) return;
+        prikaziCesticu(map, st.odabranaId, 300);
+      }),
+    [prikaziCesticu],
+  );
+
   // Odabir iz liste/karte → highlight (+ let do čestice samo kad je odabrana u listi)
   useEffect(
     () =>
@@ -153,13 +188,9 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
         prethodna.current = fid ?? null;
         if (fid === undefined) return;
         map.setFeatureState({ source: 'cestice', id: fid }, { odabrana: true });
-        if (izvor === 'lista') {
-          const c = cestice.find((x) => x.id === odabranaId);
-          const b = c && granice([c]);
-          if (b) map.fitBounds(b, { padding: 80, maxZoom: 17, duration: 600 });
-        }
+        if (izvor === 'lista') prikaziCesticu(map, odabranaId, 600);
       }),
-    [cestice],
+    [prikaziCesticu],
   );
 
   // NDVI snimka odabrane čestice (blob: PNG) — ispod obruba, iznad satelita

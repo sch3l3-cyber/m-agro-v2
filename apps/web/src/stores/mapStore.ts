@@ -15,6 +15,9 @@ interface MapState {
   odabranaId: string | null;
   izvor: 'karta' | 'lista' | null;
   overlay: Overlay | null;
+  /** px karte odozdo prekrivenih mobilnom pločom — karta centrira česticu iznad nje */
+  donjiRub: number;
+  postaviDonjiRub: (px: number) => void;
   odaberi: (id: string | null, izvor: 'karta' | 'lista') => void;
   postaviOverlay: (o: Overlay | null) => void;
 }
@@ -23,6 +26,10 @@ export const useMapStore = create<MapState>()((set, get) => ({
   odabranaId: null,
   izvor: null,
   overlay: null,
+  donjiRub: 0,
+  postaviDonjiRub: (px) => {
+    if (Math.abs(px - get().donjiRub) > 2) set({ donjiRub: px });
+  },
   odaberi: (id, izvor) => {
     // promjena čestice → makni snimku prethodne
     if (id !== get().odabranaId) get().postaviOverlay(null);

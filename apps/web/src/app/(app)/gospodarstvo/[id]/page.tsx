@@ -22,19 +22,19 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   return (
     <>
-      <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-2">
-        <div className="min-w-0">
-          <Link href="/" className="text-sm text-list-700">
-            ← Gospodarstva
+      <div className="flex min-h-12 flex-shrink-0 items-center justify-between gap-2 border-b border-zinc-200 bg-white px-2">
+        <div className="flex min-w-0 items-center">
+          <Link href="/" className="flex min-h-11 min-w-11 flex-shrink-0 items-center justify-center text-xl text-list-700" aria-label="Natrag na gospodarstva">
+            ←
           </Link>
-          <h1 className="truncate text-lg font-semibold">{gosp.naziv}</h1>
+          <h1 className="truncate font-semibold">{gosp.naziv}</h1>
         </div>
         {smijeUvoz && (
           <Link
             href={`/gospodarstvo/${id}/uvoz`}
-            className="inline-flex min-h-11 flex-shrink-0 items-center rounded-lg bg-list-600 px-4 text-sm font-semibold text-white hover:bg-list-700"
+            className="inline-flex min-h-11 flex-shrink-0 items-center rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10"
           >
-            Uvezi čestice
+            Uvezi
           </Link>
         )}
       </div>

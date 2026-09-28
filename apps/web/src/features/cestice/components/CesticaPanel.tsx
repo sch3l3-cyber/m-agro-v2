@@ -18,11 +18,18 @@ export function CesticaPanel({
   gospodarstvoId,
   smijeUredjivati,
   onUredi,
+  onZatvori,
+  sazeto = false,
+  onRasiri,
 }: {
   cestica: Cestica;
   gospodarstvoId: string;
   smijeUredjivati: boolean;
   onUredi?: () => void;
+  onZatvori?: () => void;
+  /** mobilna ploča sklopljena: vidi se samo zaglavlje; NDVI ostaje montiran (slika ostaje na karti) */
+  sazeto?: boolean;
+  onRasiri?: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('ndvi');
   const [brojOperacija, setBrojOperacija] = useState<number | null>(null);
@@ -31,12 +38,12 @@ export function CesticaPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
+        <button type="button" onClick={onRasiri} disabled={!onRasiri} className="min-w-0 flex-1 text-left disabled:cursor-default" aria-label={onRasiri ? `Otvori detalje: ${cestica.naziv}` : undefined}>
           <p className="truncate font-semibold">{cestica.naziv}</p>
           <p className="text-sm text-zinc-600">
             {ha.format(cestica.povrsinaHa)} ha{cestica.kultura && ` · ${cestica.kultura}`}
           </p>
-        </div>
+        </button>
         {onUredi && (
           <button
             type="button"
@@ -46,8 +53,14 @@ export function CesticaPanel({
             Uredi
           </button>
         )}
+        {onZatvori && (
+          <button type="button" onClick={onZatvori} aria-label="Zatvori česticu" className="min-h-11 min-w-11 flex-shrink-0 rounded-lg text-lg text-zinc-500 hover:bg-zinc-100">
+            ✕
+          </button>
+        )}
       </div>
 
+      <div hidden={sazeto} className="flex flex-col gap-3">
       <div className="grid grid-cols-2 border-b border-zinc-200" role="tablist" aria-label="Prikaz čestice">
         {(['ndvi', 'operacije'] as const).map((t) => (
           <button
@@ -67,6 +80,7 @@ export function CesticaPanel({
       </div>
       <div hidden={tab !== 'operacije'}>
         <OperacijeTab cesticaId={cestica.id} gospodarstvoId={gospodarstvoId} kultura={cestica.kultura} smijeUpisivati={smijeUredjivati} onBroj={onBroj} />
+      </div>
       </div>
     </div>
   );
