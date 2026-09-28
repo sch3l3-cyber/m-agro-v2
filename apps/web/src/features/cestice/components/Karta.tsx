@@ -1,0 +1,161 @@
+'use client';
+
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { useEffect, useRef } from 'react';
+import { GeolocateControl, Map as MlMap, NavigationControl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
+import type { Cestica } from '@/lib/db';
+import { useMapStore } from '@/stores/mapStore';
+import { bojaCestice } from '../boje';
+
+// Satelitska podloga kao u v1 (Esri World Imagery) + nazivi mjesta (Carto)
+const STIL: StyleSpecification = {
+  version: 8,
+  sources: {
+    satelit: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: 'Snimke © Esri, Maxar, Earthstar Geographics',
+    },
+    nazivi: {
+      type: 'raster',
+      tiles: ['https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png'],
+      tileSize: 256,
+      attribution: '© OpenStreetMap © CARTO',
+    },
+  },
+  layers: [
+    { id: 'satelit', type: 'raster', source: 'satelit' },
+    { id: 'nazivi', type: 'raster', source: 'nazivi', paint: { 'raster-opacity': 0.8 } },
+  ],
+};
+
+function granice(cestice: Cestica[]): LngLatBoundsLike | null {
+  let [minX, minY, maxX, maxY] = [180, 90, -180, -90];
+  for (const c of cestice)
+    for (const poly of c.geom.coordinates)
+      for (const ring of poly)
+        for (const [x, y] of ring) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+  return minX > maxX ? null : [minX, minY, maxX, maxY];
+}
+
+function uFeatureCollection(cestice: Cestica[]): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: cestice.map((c, i) => ({
+      type: 'Feature',
+      id: i + 1, // MapLibre feature-state traži numerički id
+      properties: { cid: c.id, naziv: c.naziv, boja: bojaCestice(c.landUseId) },
+      geometry: c.geom,
+    })),
+  };
+}
+
+export default function Karta({ cestice }: { cestice: Cestica[] }) {
+  const el = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MlMap | null>(null);
+  const idPoCid = useRef(new Map<string, number>());
+  const prethodna = useRef<number | null>(null);
+  const zadnjeCestice = useRef(cestice);
+  const prikazano = useRef(false);
+  const odaberi = useMapStore((s) => s.odaberi);
+
+  // Inicijalizacija — jednom
+  useEffect(() => {
+    if (!el.current) return; // lekcija #4: nikad bez null-checka
+    const map = new MlMap({
+      container: el.current,
+      style: STIL,
+      center: [18.36, 45.36],
+      zoom: 12,
+      attributionControl: { compact: true },
+      dragRotate: false,
+    });
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new GeolocateControl({ trackUserLocation: true }), 'top-right');
+    mapRef.current = map;
+
+    map.on('load', () => {
+      map.addSource('cestice', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'cestice-fill',
+        type: 'fill',
+        source: 'cestice',
+        paint: {
+          'fill-color': ['get', 'boja'],
+          'fill-opacity': ['case', ['boolean', ['feature-state', 'odabrana'], false], 0.55, 0.35],
+        },
+      });
+      map.addLayer({
+        id: 'cestice-obrub',
+        type: 'line',
+        source: 'cestice',
+        paint: {
+          'line-color': ['case', ['boolean', ['feature-state', 'odabrana'], false], '#ffeb3b', '#ffffff'],
+          'line-width': ['case', ['boolean', ['feature-state', 'odabrana'], false], 4, 1.5],
+        },
+      });
+      map.on('click', 'cestice-fill', (e: MapLayerMouseEvent) => {
+        const cid = e.features?.[0]?.properties?.cid;
+        if (typeof cid === 'string') odaberi(cid, 'karta');
+      });
+      map.on('click', (e: MapMouseEvent) => {
+        if (map.queryRenderedFeatures(e.point, { layers: ['cestice-fill'] }).length === 0) odaberi(null, 'karta');
+      });
+      map.on('mouseenter', 'cestice-fill', () => (map.getCanvas().style.cursor = 'pointer'));
+      map.on('mouseleave', 'cestice-fill', () => (map.getCanvas().style.cursor = ''));
+      postaviPodatke(map, zadnjeCestice.current);
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [odaberi]);
+
+  // Podaci — kad se promijene čestice (npr. nakon uvoza). fitBounds samo prvi put (lekcija #7).
+  function postaviPodatke(map: MlMap, lista: Cestica[]) {
+    const src = map.getSource('cestice') as GeoJSONSource | undefined;
+    if (!src) return; // stil još nije učitan — 'load' handler će pozvati ponovo
+    idPoCid.current = new Map(lista.map((c, i) => [c.id, i + 1]));
+    prethodna.current = null;
+    src.setData(uFeatureCollection(lista));
+    const b = granice(lista);
+    if (b && !prikazano.current) map.fitBounds(b, { padding: 40, duration: 0, maxZoom: 16 });
+    prikazano.current = true;
+  }
+
+  useEffect(() => {
+    zadnjeCestice.current = cestice;
+    if (mapRef.current) postaviPodatke(mapRef.current, cestice);
+  }, [cestice]);
+
+  // Odabir iz liste/karte → highlight (+ let do čestice samo kad je odabrana u listi)
+  useEffect(
+    () =>
+      useMapStore.subscribe(({ odabranaId, izvor }) => {
+        const map = mapRef.current;
+        if (!map || !map.getSource('cestice')) return;
+        if (prethodna.current !== null) map.setFeatureState({ source: 'cestice', id: prethodna.current }, { odabrana: false });
+        const fid = odabranaId ? idPoCid.current.get(odabranaId) : undefined;
+        prethodna.current = fid ?? null;
+        if (fid === undefined) return;
+        map.setFeatureState({ source: 'cestice', id: fid }, { odabrana: true });
+        if (izvor === 'lista') {
+          const c = cestice.find((x) => x.id === odabranaId);
+          const b = c && granice([c]);
+          if (b) map.fitBounds(b, { padding: 80, maxZoom: 17, duration: 600 });
+        }
+      }),
+    [cestice],
+  );
+
+  return <div ref={el} className="h-full w-full" aria-label="Karta čestica" role="region" />;
+}

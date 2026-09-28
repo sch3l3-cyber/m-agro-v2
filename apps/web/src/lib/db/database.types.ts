@@ -275,7 +275,12 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      uvezi_cestice: {
+        Args: { p_gospodarstvo: string; p_cestice: Json; p_mod: string };
+        Returns: Json;
+      };
+    };
     Enums: {
       tip_operacije: 'sjetva' | 'prihrana' | 'zastita' | 'zetva' | 'obrada' | 'ostalo';
       uloga_clanstva: 'citanje' | 'clan' | 'vlasnik';

@@ -13,3 +13,6 @@
 - **`middleware.ts` umjesto `proxy.ts`.** Next 16 `proxy.ts` radi na Node runtimeu, što OpenNext na Cloudflareu
   označava kao eksperimentalno, a bundle naraste na 3.4 MiB (preko limita). Edge `middleware.ts` je deprecated
   ali podržan; build ispisuje upozorenje. Prelazimo na `proxy.ts` kad ga OpenNext službeno podrži.
+- **Teške biblioteke samo u browseru.** `@m-agro/domain` ima dva ulaza: `.` (zod sheme, WGS84 provjera —
+  smije na server) i `./uvoz` (proj4 + turf parser — uvozi se dinamički u klijentu). MapLibre ide kroz
+  `next/dynamic({ ssr: false })`. Faza 1a: worker 2.27 MiB (74 %).

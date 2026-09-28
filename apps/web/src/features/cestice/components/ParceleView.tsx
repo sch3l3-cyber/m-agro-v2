@@ -1,0 +1,52 @@
+'use client';
+
+import dynamic from 'next/dynamic';
+import { useState } from 'react';
+import type { Cestica } from '@/lib/db';
+import { ListaCestica } from './ListaCestica';
+
+// MapLibre (~800 KB) samo u browseru — ne ulazi u Worker bundle (ADR-0001, limit 3 MiB)
+const Karta = dynamic(() => import('./Karta'), {
+  ssr: false,
+  loading: () => <div className="flex h-full items-center justify-center bg-zinc-800 text-sm text-zinc-300">Učitavam kartu…</div>,
+});
+
+const ha = new Intl.NumberFormat('hr-HR', { maximumFractionDigits: 2 });
+
+/**
+ * Mobitel: karta gore, lista dolje (prekidač "Karta/Lista" za puni ekran).
+ * Desktop: lista lijevo, karta desno. Bez position:sticky (lekcija #6).
+ */
+export function ParceleView({ cestice }: { cestice: Cestica[] }) {
+  const [mobilniPrikaz, setMobilniPrikaz] = useState<'karta' | 'lista'>('karta');
+  const ukupno = cestice.reduce((s, c) => s + c.povrsinaHa, 0);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className="flex flex-shrink-0 border-b border-zinc-200 bg-white md:hidden" role="tablist">
+        {(['karta', 'lista'] as const).map((p) => (
+          <button
+            key={p}
+            role="tab"
+            aria-selected={mobilniPrikaz === p}
+            onClick={() => setMobilniPrikaz(p)}
+            className={`min-h-12 flex-1 text-base font-semibold ${mobilniPrikaz === p ? 'border-b-2 border-list-600 text-list-700' : 'text-zinc-500'}`}
+          >
+            {p === 'karta' ? 'Karta' : `Lista (${cestice.length})`}
+          </button>
+        ))}
+      </div>
+
+      <aside className={`${mobilniPrikaz === 'lista' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col border-zinc-200 bg-zemlja-50 md:flex md:w-96 md:flex-none md:border-r`}>
+        <p className="flex-shrink-0 px-3 pt-3 text-sm text-zinc-600">
+          {cestice.length} čestica · {ha.format(ukupno)} ha
+        </p>
+        <ListaCestica cestice={cestice} />
+      </aside>
+
+      <section className={`${mobilniPrikaz === 'karta' ? 'flex' : 'hidden'} min-h-[60vh] flex-1 md:flex md:min-h-0`}>
+        <Karta cestice={cestice} />
+      </section>
+    </div>
+  );
+}
