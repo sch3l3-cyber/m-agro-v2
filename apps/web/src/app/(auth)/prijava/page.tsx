@@ -12,7 +12,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
       <h1 className="mb-5 text-xl font-semibold">Prijava</h1>
       {sp.greska === 'link' && (
         <p role="alert" className="mb-4 text-sm text-red-700">
-          Link je istekao ili je već iskorišten. Prijavi se ili zatraži novi.
+          Ako si upravo potvrdio email, račun je aktivan — samo se prijavi. Ako prijava ne uspije, link je istekao pa se registriraj ponovo.
         </p>
       )}
       <AuthForm

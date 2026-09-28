@@ -49,8 +49,9 @@ export const supabaseDb: DbClient = {
 
   async ping() {
     const sb = await supabaseForRequest();
-    // HEAD upit — ne vraća redove; anon nema grant pa 401/42501 također znači "baza je gore"
-    const { error } = await sb.from('gospodarstva').select('id', { head: true, count: 'planned' }).limit(1);
+    // GET (ne HEAD — HEAD odgovor nema tijelo pa se kod greške ne može pročitati).
+    // Anon nema grant: 42501 "permission denied" dokazuje da je PostgREST + baza gore.
+    const { error } = await sb.from('gospodarstva').select('id').limit(1);
     return !error || error.code === '42501';
   },
 };

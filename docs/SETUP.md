@@ -45,3 +45,8 @@ pnpm db:test                                   # RLS testovi (treba Docker + Sup
 | Worker web | `m-agro-v2-web` | `magro-wms`, `fragrant-flower-75cd` |
 | Worker sentinel | `m-agro-v2-sentinel` | |
 | Supabase | `m-agro-v2-dev` (klgdptmjnwvlzygneqcf) | `magro baza`, `agro aplikacija baza` (v1) |
+
+## Stanje (2026-09-28)
+- Web: https://m-agro-v2-web.sch3l3.workers.dev — deploy preko CI-ja radi.
+- Email predlošci (ADR-0004) se NE mogu mijenjati bez vlastitog SMTP-a → Faza 1: Resend + hrvatski predlošci.
+  Do tada Supabase šalje zadane (engleske) emailove s PKCE linkom; potvrda radi, cross-device prijava ide ručno.
