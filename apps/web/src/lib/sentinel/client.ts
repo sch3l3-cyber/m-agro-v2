@@ -93,3 +93,14 @@ export async function dohvatiTrend(cesticaId: string): Promise<TrendTocka[]> {
   const r = await poziv(`/trend?cestica=${cesticaId}&v=${STATS_VERZIJA}`, 60_000);
   return TrendSchema.parse(await r.json()).tocke;
 }
+
+const VisegodisnjeSchema = z.object({
+  mjeseci: z.array(z.object({ mjesec: z.string(), mean: z.number(), p10: z.number().nullable(), p90: z.number().nullable() })),
+});
+export type MjesecNdvi = z.infer<typeof VisegodisnjeSchema>['mjeseci'][number];
+
+/** Mjesečni max-NDVI od 2017. Prvi put za česticu može trajati i minutu (jedan veliki Sentinel poziv). */
+export async function dohvatiVisegodisnje(cesticaId: string): Promise<MjesecNdvi[]> {
+  const r = await poziv(`/visegodisnje?cestica=${cesticaId}`, 90_000);
+  return VisegodisnjeSchema.parse(await r.json()).mjeseci;
+}

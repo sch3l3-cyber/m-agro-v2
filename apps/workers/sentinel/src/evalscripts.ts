@@ -10,6 +10,16 @@ function setup(){return{input:[{bands:["B04","B08","SCL","dataMask"]}],output:[{
 ${MASKA}
 function evaluatePixel(s){var ok=cist(s);return{ndvi:[ok?(s.B08-s.B04)/(s.B08+s.B04):0],dataMask:[ok?1:0]};}`;
 
+/**
+ * Višegodišnji trend: mjesečni max-NDVI sastav (mosaicking ORBIT) — po pikselu najveći NDVI svih ČISTIH
+ * preleta u intervalu. Otporno na oblake (jedan čist prelet u mjesecu je dovoljan) i uobičajeno u praksi.
+ */
+export const MAX_NDVI_EVALSCRIPT = `//VERSION=3
+function setup(){return{input:[{bands:["B04","B08","SCL","dataMask"]}],output:[{id:"ndvi",bands:1,sampleType:"FLOAT32"},{id:"dataMask",bands:1}],mosaicking:"ORBIT"}}
+function evaluatePixel(samples){var m=-2;for(var i=0;i<samples.length;i++){var s=samples[i];
+if(s.dataMask===1&&[3,8,9,10].indexOf(s.SCL)<0){var n=(s.B08-s.B04)/(s.B08+s.B04);if(n>m)m=n;}}
+return{ndvi:[m>-2?m:0],dataMask:[m>-2?1:0]};}`;
+
 /** Paleta iz v1 (user-friendly zelena, brief 02 §3) */
 const NDVI = `//VERSION=3
 function setup(){return{input:[{bands:["B04","B08","SCL","dataMask"]}],output:{bands:4,sampleType:"UINT8"}}}

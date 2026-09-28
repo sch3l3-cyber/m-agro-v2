@@ -325,3 +325,33 @@ describe('sirovi NDVI za VRA', () => {
     expect(px(0.1, 0.3, 9)).toBe(0); // oblak
   });
 });
+
+describe('višegodišnji trend', () => {
+  it('jedan poziv, P1M, ORBIT max-NDVI, širina/visina u pikselima (NE resx/resy), cache drugi put', async () => {
+    let tijelo = '';
+    let poziva = 0;
+    mockFetch((u, init) => {
+      if (u.includes('/rest/v1/cestice')) return J([{ id: CID, geom_hash: 'h1', geom_arkod: GEOM }]);
+      if (u.includes('/rpc/sentinel_potrosi')) return J(true);
+      if (u.includes('openid-connect/token')) return J({ access_token: 't', expires_in: 600 });
+      if (u.includes('/api/v1/statistics')) {
+        poziva++;
+        tijelo = String(init?.body);
+        const st = (mean: number) => ({ outputs: { ndvi: { bands: { B0: { stats: { min: 0, max: 1, mean, stDev: 0.1, sampleCount: 100, noDataCount: 0, percentiles: { '10.0': mean - 0.1, '90.0': mean + 0.1 } } } } } } });
+        return J({ data: [{ interval: { from: '2017-05-01T00:00:00Z', to: 'x' }, ...st(0.8) }, { interval: { from: '2017-06-01T00:00:00Z', to: 'x' }, outputs: { ndvi: { bands: { B0: { stats: { min: 0, max: 0, mean: 0, stDev: 0, sampleCount: 100, noDataCount: 100 } } } } } }] });
+      }
+      return undefined;
+    });
+    const r = await call(`/visegodisnje?cestica=${CID}`, auth);
+    const b = (await r.json()) as { mjeseci: { mjesec: string; mean: number }[] };
+    expect(b.mjeseci).toEqual([{ mjesec: '2017-05', mean: 0.8, p10: expect.closeTo(0.7, 5), p90: expect.closeTo(0.9, 5) }]);
+    const z = JSON.parse(tijelo);
+    expect(z.aggregation.aggregationInterval.of).toBe('P1M');
+    expect(z.aggregation.evalscript).toContain('mosaicking:"ORBIT"');
+    expect(z.aggregation.width).toBeGreaterThan(0);
+    expect(tijelo).not.toMatch(/resx|resy/);
+    await Promise.all(waitUntil);
+    await call(`/visegodisnje?cestica=${CID}`, auth);
+    expect(poziva).toBe(1);
+  });
+});

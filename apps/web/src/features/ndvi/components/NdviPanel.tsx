@@ -6,6 +6,7 @@ import { dohvatiSliku, dohvatiSnimke, dohvatiStats, dohvatiTrend, SentinelKlijen
 import { useMapStore } from '@/stores/mapStore';
 import { KONTRAST_LEGENDA, NDMI_LEGENDA, NDRE_LEGENDA, NDVI_RAZREDI, razred } from '../kategorije';
 import { TrendGraf } from './TrendGraf';
+import { VisegodisnjiGraf } from './VisegodisnjiGraf';
 
 const SLOJ_LABEL: Record<Sloj, string> = { ndvi: 'NDVI', kontrast: 'Kontrast', prave_boje: 'Prave boje', ndmi: 'Vlaga', ndre: 'Dušik' };
 const fmtDatum = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'short' });
@@ -168,6 +169,11 @@ export function NdviPanel({ cestica }: { cestica: Cestica }) {
         {trend.status === 'ucitavam' && <p className="text-xs text-zinc-500">Računam NDVI za sve snimke… (prvi put do pola minute)</p>}
         {trend.status === 'greska' && <p role="alert" className="text-xs text-red-700">{trend.poruka}</p>}
         {trend.status === 'ok' && trend.data.length > 0 && <TrendGraf tocke={trend.data} odabrani={datum} onOdaberi={setDatum} />}
+      </section>
+
+      <section className="border-t border-zinc-200 pt-2" aria-label="NDVI po godinama">
+        <p className="mb-1 text-sm font-semibold">Po godinama</p>
+        <VisegodisnjiGraf cesticaId={cestica.id} />
       </section>
     </div>
   );

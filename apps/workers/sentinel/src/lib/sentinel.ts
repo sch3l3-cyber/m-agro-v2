@@ -3,7 +3,7 @@
  * Lekcija #1 (04_LEKCIJE.md): Statistics API NIKAD ne smije dobiti resx/resy — vraća 1 piksel.
  * `StatsAggregation` tip strukturno ne dopušta ta polja; test to dodatno provjerava.
  */
-import { STATS_EVALSCRIPT } from '../evalscripts';
+import { MAX_NDVI_EVALSCRIPT, STATS_EVALSCRIPT } from '../evalscripts';
 
 const TOKEN_URL = 'https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token';
 const API = 'https://sh.dataspace.copernicus.eu/api/v1';
@@ -284,4 +284,57 @@ export async function slika(tok: string, g: Geometrija, datum: string, evalscrip
   const ct = r.headers.get('content-type') ?? '';
   if (!r.ok || !ct.includes('image/png')) throw new SentinelError(`Snimka nedostupna (${r.status})`, 502);
   return r.arrayBuffer();
+}
+
+// ---------------------------------------------------------------- višegodišnji trend
+export interface MjesecNdvi {
+  /** YYYY-MM */
+  mjesec: string;
+  mean: number;
+  p10: number | null;
+  p90: number | null;
+}
+
+/**
+ * Mjesečni max-NDVI od `odGodine` do danas, JEDNIM pozivom (P1M intervali).
+ * Širina/visina u PIKSELIMA (~10 m) — to nije resx/resy (lekcija #1 se odnosi na stupnjeve u CRS84);
+ * bez njih bi API uzorkovao 256×256 i trošio ~100× više jedinica za malu česticu.
+ */
+export function visegodisnjeZahtjev(g: Geometrija, odGodine: number, danas = new Date()) {
+  const { w, h } = dimenzije(bbox(g));
+  const doMj = new Date(Date.UTC(danas.getUTCFullYear(), danas.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  return {
+    input: { bounds: { geometry: g, properties: { crs: CRS84 } }, data: [{ type: 'sentinel-2-l2a' }] },
+    aggregation: {
+      timeRange: { from: `${odGodine}-01-01T00:00:00Z`, to: `${doMj}T00:00:00Z` },
+      aggregationInterval: { of: 'P1M' },
+      lastIntervalBehavior: 'SHORTEN',
+      width: w,
+      height: h,
+      evalscript: MAX_NDVI_EVALSCRIPT,
+    },
+    calculations: { ndvi: { statistics: { default: { percentiles: { k: [10, 90] } } } } },
+  };
+}
+
+export function parsirajVisegodisnje(d: StatsOdgovor, udio: number): MjesecNdvi[] {
+  const out: MjesecNdvi[] = [];
+  for (const it of d.data ?? []) {
+    const mj = it.interval?.from.slice(0, 7);
+    const i = parsirajInterval(it, udio);
+    if (!mj || i.status !== 'ok') continue;
+    const p = i.stats.percentili;
+    out.push({ mjesec: mj, mean: i.stats.mean, p10: p['10.0'] ?? p['10'] ?? null, p90: p['90.0'] ?? p['90'] ?? null });
+  }
+  return out;
+}
+
+export async function visegodisnje(tok: string, g: Geometrija, odGodine: number): Promise<MjesecNdvi[]> {
+  const r = await fetch(`${API}/statistics`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
+    body: JSON.stringify(visegodisnjeZahtjev(g, odGodine)),
+  });
+  if (!r.ok) throw new SentinelError(`Višegodišnja statistika nedostupna (${r.status}) ${(await r.text()).slice(0, 200)}`, 502);
+  return parsirajVisegodisnje((await r.json()) as StatsOdgovor, udioUBboxu(g));
 }

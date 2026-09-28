@@ -5,6 +5,7 @@
  *   GET /datumi?cestica=<uuid>                       dostupne snimke (zadnjih 150 dana)
  *   GET /stats?cestica=<uuid>&datum=YYYY-MM-DD        NDVI statistike (dijeljeni cache u Postgresu)
  *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje|ndmi|ndre|ndvi_sirovo PNG (dijeljeni Cache API)
+ *   GET /visegodisnje?cestica=<uuid>                 mjesečni max-NDVI od 2017. (Cache API 7 dana)
  *   GET /trend?cestica=<uuid>                        NDVI kroz sezonu (jedan Sentinel poziv za sve što nije u cacheu)
  *
  * Svi osim /health traže `Authorization: Bearer <Supabase JWT>`. Čestica se čita iz baze s tim
@@ -14,7 +15,7 @@
 import { z } from 'zod';
 import { evalscriptZaSloj, kontrastEvalscript, SLOJEVI } from './evalscripts';
 import { citajCache, citajCacheRaspon, dohvatiCesticu, KvotaIscrpljena, korisnikIzJwt, NemaPristupa, pisiCache, pisiCacheVise, potrosiKvotu, type SupabaseEnv } from './lib/supabase';
-import { dostupniDatumi, getToken, SentinelError, slika, statistike, statistikeRaspon, type Snimka, type StatsIshod } from './lib/sentinel';
+import { dostupniDatumi, getToken, SentinelError, slika, statistike, statistikeRaspon, visegodisnje, type Snimka, type StatsIshod } from './lib/sentinel';
 
 export interface Env extends SupabaseEnv {
   ALLOWED_ORIGINS: string;
@@ -117,6 +118,19 @@ export default {
         const snimke = await datumi(env, jwt, c.geomHash, c.geom, ctx);
         if (!snimke) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
         return json({ snimke }, 200, cors, 'public, max-age=21600'); // 6 h — novi prelet je svakih 2–5 dana
+      }
+
+      if (url.pathname === '/visegodisnje') {
+        const kljuc = new Request(`https://cache.m-agro.internal/visegodisnje/v1/${c.geomHash}`);
+        const hit = await caches.default.match(kljuc);
+        if (hit) return new Response(hit.body, { headers: { ...Object.fromEntries(hit.headers), ...cors } });
+        // ~117 mjeseci u jednom pozivu — skuplje od običnog, zato veći trošak kvote
+        if (!(await smijeSentinel(env, jwt, 30))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+        const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
+        const mjeseci = await visegodisnje(tok, c.geom, 2017);
+        const res = json({ mjeseci }, 200, {}, 'private, max-age=86400');
+        ctx.waitUntil(caches.default.put(kljuc, new Response(res.clone().body, { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' } })));
+        return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
       }
 
       if (url.pathname === '/trend') {
