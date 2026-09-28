@@ -2,10 +2,14 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef } from 'react';
-import { GeolocateControl, Map as MlMap, NavigationControl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
+import { GeolocateControl, Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import type { Cestica } from '@/lib/db';
 import { useMapStore } from '@/stores/mapStore';
 import { bojaCestice } from '../boje';
+import { version as MAPLIBRE_VERZIJA } from 'maplibre-gl/package.json';
+
+// Worker se poslužuje iz public/ (scripts/kopiraj-maplibre-worker.mjs) — bundler ga ne kopira sam
+if (typeof window !== 'undefined') setWorkerUrl(`${window.location.origin}/maplibre/${MAPLIBRE_VERZIJA}/maplibre-gl-worker.mjs`);
 
 // Satelitska podloga kao u v1 (Esri World Imagery) + nazivi mjesta (Carto)
 const STIL: StyleSpecification = {

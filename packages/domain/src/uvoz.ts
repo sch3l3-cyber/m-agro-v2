@@ -122,6 +122,7 @@ export function parsirajUvoz(input: unknown): UvozRezultat {
   const cestice: UvozCestica[] = [];
   const vidjeniArkod = new Map<string, number>();
   const bezNaziva: number[] = [];
+  const vidjeniNazivi = new Map<string, number>();
 
   for (const { redak, props, geom } of featuri) {
     if (prop(props, 'is_active') === false) {
@@ -150,6 +151,17 @@ export function parsirajUvoz(input: unknown): UvozRezultat {
     if (!naziv) {
       naziv = arkodId ? `ARKOD ${arkodId}` : `Čestica ${redak}`;
       bezNaziva.push(redak);
+    }
+
+    // Bez ARKOD broja čestica se u bazi prepoznaje po nazivu — dva ista naziva u datoteci
+    // bi se "spojila" (druga bi bila preskočena). Razlikujemo ih sufiksom i JAVLJAMO to.
+    if (!arkodId) {
+      const n = (vidjeniNazivi.get(naziv) ?? 0) + 1;
+      vidjeniNazivi.set(naziv, n);
+      if (n > 1) {
+        upozorenja.push(`Redak ${redak}: naziv "${naziv}" se ponavlja — spremljeno kao "${naziv} (${n})".`);
+        naziv = `${naziv} (${n})`;
+      }
     }
 
     const landUseId = broj(prop(props, ...LAND_USE));

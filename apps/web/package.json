@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:worker": "opennextjs-cloudflare build",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "build:worker": "node scripts/kopiraj-maplibre-worker.mjs && opennextjs-cloudflare build",
+    "preview": "node scripts/kopiraj-maplibre-worker.mjs && opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "node scripts/kopiraj-maplibre-worker.mjs && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "db:types": "supabase gen types typescript --project-id klgdptmjnwvlzygneqcf > src/lib/db/database.types.ts"
+    "db:types": "supabase gen types typescript --project-id klgdptmjnwvlzygneqcf > src/lib/db/database.types.ts",
+    "predev": "node scripts/kopiraj-maplibre-worker.mjs",
+    "prebuild": "node scripts/kopiraj-maplibre-worker.mjs"
   },
   "dependencies": {
     "@m-agro/domain": "workspace:*",

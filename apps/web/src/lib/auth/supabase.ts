@@ -49,7 +49,8 @@ export const supabaseAuth: AuthClient = {
 
   async signOut() {
     const sb = await supabaseForRequest();
-    const { error } = await sb.auth.signOut();
+    // 'local': odjava samo na ovom uređaju (ne izbaci farmera i s mobitela na traktoru)
+    const { error } = await sb.auth.signOut({ scope: 'local' });
     if (error) console.error('[auth] signOut', error.message);
   },
 

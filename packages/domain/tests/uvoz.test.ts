@@ -51,6 +51,12 @@ describe('KML / Google Earth izvoz', () => {
     expect(r.cestice[0]?.arkodId).toBeNull();
   });
 
+  it('isti naziv dvaput (bez ARKOD-a) → drugi dobiva sufiks i upozorenje, ništa se ne gubi', () => {
+    const r = parsirajUvoz(fc([f({ Name: 'NUMERA' }, poly(18.3, 45.3)), f({ Name: 'NUMERA' }, poly(18.31, 45.3))]));
+    expect(r.cestice.map((c) => c.naziv)).toEqual(['NUMERA', 'NUMERA (2)']);
+    expect(r.upozorenja.join(' ')).toMatch(/ponavlja/);
+  });
+
   it('bez naziva: privremeni naziv + VIDLJIVO upozorenje (nema tihog "Čestica")', () => {
     const r = parsirajUvoz(fc([f({}, poly(18.36, 45.36))]));
     expect(r.cestice[0]?.naziv).toBe('Čestica 1');
@@ -88,6 +94,7 @@ describe.runIf(existsSync(PRAVA))('prava datoteka parcele.geojson', () => {
     expect(r.greske).toEqual([]);
     expect(r.cestice).toHaveLength(86);
     expect(r.cestice.every((c) => c.naziv && !c.naziv.startsWith('Čestica '))).toBe(true);
+    expect(new Set(r.cestice.map((c) => c.naziv)).size).toBe(86); // svi nazivi jedinstveni
     console.log(`  ${r.cestice.length} čestica, ${r.ukupnoHa} ha, format ${r.format}`);
   });
 });
