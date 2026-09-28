@@ -18,3 +18,11 @@ body {
   background: var(--color-zemlja-50);
   color: var(--color-zemlja-900);
 }
+
+/* Kontrole karte na dodirnim uređajima: ≥44 px (rukavice, traktor) */
+@media (pointer: coarse) {
+  .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+}

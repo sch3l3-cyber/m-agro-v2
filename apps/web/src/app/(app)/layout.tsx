@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-dvh flex-col">
       <header className="flex h-12 flex-shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4">
-        <Link href="/" className="text-lg font-bold text-list-700">
+        <Link href="/" className="flex min-h-11 items-center text-lg font-bold text-list-700">
           M-AGRO
         </Link>
         <div className="flex items-center gap-2">
