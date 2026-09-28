@@ -64,6 +64,31 @@ export function bbox(g: Geometrija): [number, number, number, number] {
   return [a, b, c, d];
 }
 
+/**
+ * Udio površine čestice u njenom bboxu (0–1]. Statistical API bez resx/resy uzorkuje CIJELI bbox
+ * (~256×256), a pikseli izvan poligona broje se u noDataCount — bez ove korekcije
+ * "oblačnost" bi bila samo udio praznog prostora oko kose čestice (bug 2026-09-28: stalno 48 %).
+ * Planarni shoelace u stupnjevima je dovoljno točan jer se dijeli s bboxom u istim jedinicama.
+ */
+export function udioUBboxu(g: Geometrija): number {
+  const prsten = (r: number[][]) => {
+    let a = 0;
+    let prev = r[r.length - 1] ?? [0, 0];
+    for (const cur of r) {
+      a += ((prev[0] ?? 0) + (cur[0] ?? 0)) * ((prev[1] ?? 0) - (cur[1] ?? 0));
+      prev = cur;
+    }
+    return Math.abs(a) / 2;
+  };
+  const poligon = (p: number[][][]) => p.reduce((sum, r, i) => sum + (i === 0 ? prsten(r) : -prsten(r)), 0);
+  const polys = (g.type === 'Polygon' ? [g.coordinates] : g.coordinates) as number[][][][];
+  const povrsina = polys.reduce((sum, p) => sum + poligon(p), 0);
+  const [w, s, e, n] = bbox(g);
+  const bboxPov = (e - w) * (n - s);
+  if (!(bboxPov > 0) || !(povrsina > 0)) return 1;
+  return Math.min(1, povrsina / bboxPov);
+}
+
 // ---------------------------------------------------------------- katalog (dostupni datumi)
 export interface Snimka {
   datum: string;
@@ -104,6 +129,8 @@ export async function dostupniDatumi(tok: string, g: Geometrija, danaUnazad = 15
 export interface StatsAggregation {
   timeRange: { from: string; to: string };
   aggregationInterval: { of: 'P1D' | 'P3M' };
+  /** SHORTEN: nepotpun zadnji interval (npr. današnji dan) se skrati umjesto da se preskoči */
+  lastIntervalBehavior: 'SHORTEN';
   evalscript: string;
 }
 
@@ -111,6 +138,7 @@ export function statsZahtjev(g: Geometrija, datum: string) {
   const aggregation: StatsAggregation = {
     timeRange: dan(datum),
     aggregationInterval: { of: 'P1D' },
+    lastIntervalBehavior: 'SHORTEN',
     evalscript: STATS_EVALSCRIPT,
   };
   return {
@@ -136,6 +164,7 @@ export type StatsIshod = { status: 'ok'; stats: NdviStats } | { status: 'oblacno
 
 interface StatsOdgovor {
   data?: {
+    error?: { type?: string; message?: string };
     outputs?: {
       ndvi?: {
         bands?: {
@@ -148,13 +177,20 @@ interface StatsOdgovor {
   }[];
 }
 
-/** Čista funkcija — testirana bez mreže. Ispod 20 čistih piksela (~0.2 ha) statistika nije pouzdana. */
-export function parsirajStats(d: StatsOdgovor): StatsIshod {
-  const s = d.data?.[0]?.outputs?.ndvi?.bands?.B0?.stats;
+/**
+ * Čista funkcija — testirana bez mreže.
+ * `udio` = udioUBboxu(geometrija): koliki dio uzorkovanih piksela je stvarno unutar čestice.
+ * Ispod 10 % čistih piksela čestice (ili < 20 piksela) statistika nije pouzdana → 'oblacno'.
+ */
+export function parsirajStats(d: StatsOdgovor, udio = 1): StatsIshod {
+  const interval = d.data?.[0];
+  if (interval?.error) throw new SentinelError(`Sentinel nije izračunao statistiku: ${interval.error.message ?? interval.error.type ?? 'nepoznato'}`, 502);
+  const s = interval?.outputs?.ndvi?.bands?.B0?.stats;
   if (!s || s.sampleCount === 0) return { status: 'nema_snimke' };
   const cisti = s.sampleCount - s.noDataCount;
-  const oblacnostPct = Math.round((s.noDataCount / s.sampleCount) * 1000) / 10;
-  if (cisti < 20 || !Number.isFinite(s.mean)) return { status: 'oblacno', oblacnostPct };
+  const uCestici = Math.max(cisti, s.sampleCount * udio);
+  const oblacnostPct = Math.round(((uCestici - cisti) / uCestici) * 1000) / 10;
+  if (cisti < 20 || cisti / uCestici < 0.1 || !Number.isFinite(s.mean)) return { status: 'oblacno', oblacnostPct };
   return {
     status: 'ok',
     stats: {
@@ -176,7 +212,9 @@ export async function statistike(tok: string, g: Geometrija, datum: string): Pro
     body: JSON.stringify(statsZahtjev(g, datum)),
   });
   if (!r.ok) throw new SentinelError(`Statistika nedostupna (${r.status})`, 502);
-  return parsirajStats((await r.json()) as StatsOdgovor);
+  const odg = (await r.json()) as StatsOdgovor;
+  if (!odg.data?.length) console.warn('[stats] prazan odgovor', datum, JSON.stringify(odg).slice(0, 500));
+  return parsirajStats(odg, udioUBboxu(g));
 }
 
 // ---------------------------------------------------------------- slika

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Env } from '../src/index';
-import { dan, dimenzije, parsirajStats, statsZahtjev } from '../src/lib/sentinel';
+import { dan, dimenzije, parsirajStats, SentinelError, statsZahtjev, udioUBboxu } from '../src/lib/sentinel';
 
 const CID = '20000000-0000-4000-8000-00000000000a';
 const env: Env = {
@@ -75,6 +75,25 @@ describe('parsiranje statistike', () => {
   });
   it('prazan odgovor → nema snimke', () => {
     expect(parsirajStats({ data: [] })).toEqual({ status: 'nema_snimke' });
+  });
+  it('pikseli izvan poligona NISU oblak (bug: stalno 48 %)', () => {
+    // bbox 65536 px, čestica zauzima 52 % → 34079 px; 33915 čistih → ~0,5 % oblaka, ne 48 %
+    const r = parsirajStats(s(65536, 31621), 0.52);
+    expect(r.status).toBe('ok');
+    expect(r.status === 'ok' && r.stats.oblacnostPct).toBeLessThan(1);
+  });
+  it('pola čestice pod oblakom uz udio', () => {
+    const r = parsirajStats(s(1000, 750), 0.5); // 500 px čestice, 250 čistih
+    expect(r).toMatchObject({ status: 'ok', stats: { oblacnostPct: 50 } });
+  });
+  it('greška intervala → SentinelError s porukom (ne tiho "nema snimke")', () => {
+    expect(() => parsirajStats({ data: [{ error: { type: 'EXECUTION_ERROR', message: 'x' } }] })).toThrow(SentinelError);
+  });
+  it('udio kvadrata = 1, trokuta = 0,5', () => {
+    const kv = { type: 'Polygon' as const, coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] };
+    const tr = { type: 'MultiPolygon' as const, coordinates: [[[[0, 0], [1, 0], [1, 1], [0, 0]]]] };
+    expect(udioUBboxu(kv)).toBeCloseTo(1);
+    expect(udioUBboxu(tr)).toBeCloseTo(0.5);
   });
 });
 
