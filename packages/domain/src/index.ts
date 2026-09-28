@@ -6,3 +6,4 @@ export * from './lpis';
 export * from './uvoz-dto';
 export * from './cestica';
 export * from './operacija';
+export * from './vra';

@@ -90,10 +90,25 @@ function evaluatePixel(s){
   return[0,104,55,255];
 }`;
 
-export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje', 'ndmi', 'ndre'] as const;
+/**
+ * Sirovi NDVI za VRA (lekcija #12: zone se računaju u pregledniku iz ISTIH piksela koji se crtaju).
+ * UINT8 siva: 0 = nema podatka (oblak/sjena/izvan čestice), 1..255 ↔ NDVI −0.2…1.0.
+ * MORA odgovarati `kodirajNdvi` u packages/domain/src/vra.ts (test to provjerava).
+ */
+const NDVI_SIROVO = `//VERSION=3
+function setup(){return{input:[{bands:["B04","B08","SCL","dataMask"]}],output:{bands:1,sampleType:"UINT8"}}}
+${MASKA}
+function evaluatePixel(s){
+  if(!cist(s))return[0];
+  var n=(s.B08-s.B04)/(s.B08+s.B04);
+  n=Math.min(1,Math.max(-0.2,n));
+  return[1+Math.round((n+0.2)/1.2*254)];
+}`;
+
+export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje', 'ndmi', 'ndre', 'ndvi_sirovo'] as const;
 export type Sloj = (typeof SLOJEVI)[number];
 
-const EVALSCRIPTI: Record<Exclude<Sloj, 'kontrast'>, string> = { ndvi: NDVI, prave_boje: PRAVE_BOJE, ndmi: NDMI, ndre: NDRE };
+const EVALSCRIPTI: Record<Exclude<Sloj, 'kontrast'>, string> = { ndvi: NDVI, prave_boje: PRAVE_BOJE, ndmi: NDMI, ndre: NDRE, ndvi_sirovo: NDVI_SIROVO };
 
 export function evalscriptZaSloj(sloj: Exclude<Sloj, 'kontrast'>): string {
   return EVALSCRIPTI[sloj];

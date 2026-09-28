@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Cestica } from '@/lib/db';
 import { NdviPanel } from '@/features/ndvi/components/NdviPanel';
 import { OperacijeTab } from '@/features/operacije/components/OperacijeTab';
+import { VraTab } from '@/features/vra/components/VraTab';
+import { useMapStore } from '@/stores/mapStore';
 
 const ha = new Intl.NumberFormat('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-type Tab = 'ndvi' | 'operacije';
+type Tab = 'ndvi' | 'vra' | 'operacije';
 
 /**
  * Sadržaj odabrane čestice: zaglavlje (naziv, ha, kultura, Uredi) + tabovi NDVI | Operacije.
@@ -31,7 +33,17 @@ export function CesticaPanel({
   sazeto?: boolean;
   onRasiri?: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>('ndvi');
+  const [tab, setTabState] = useState<Tab>('ndvi');
+  // VRA se montira tek kad se prvi put otvori (bez nepotrebnih Sentinel poziva), a onda ostaje
+  const [vraOtvoren, setVraOtvoren] = useState(false);
+  const postaviAktivni = useMapStore((s) => s.postaviAktivni);
+  // nova čestica uvijek počinje na NDVI sloju karte
+  useEffect(() => postaviAktivni('ndvi'), [postaviAktivni]);
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    if (t === 'vra') setVraOtvoren(true);
+    postaviAktivni(t === 'vra' ? 'vra' : 'ndvi');
+  };
   const [brojOperacija, setBrojOperacija] = useState<number | null>(null);
   const onBroj = useCallback((n: number) => setBrojOperacija(n), []);
 
@@ -61,8 +73,8 @@ export function CesticaPanel({
       </div>
 
       <div hidden={sazeto} className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 border-b border-zinc-200" role="tablist" aria-label="Prikaz čestice">
-        {(['ndvi', 'operacije'] as const).map((t) => (
+      <div className="grid grid-cols-3 border-b border-zinc-200" role="tablist" aria-label="Prikaz čestice">
+        {(['ndvi', 'vra', 'operacije'] as const).map((t) => (
           <button
             key={t}
             role="tab"
@@ -70,7 +82,7 @@ export function CesticaPanel({
             onClick={() => setTab(t)}
             className={`-mb-px min-h-11 border-b-2 text-sm font-semibold ${tab === t ? 'border-list-600 text-list-700' : 'border-transparent text-zinc-500'}`}
           >
-            {t === 'ndvi' ? 'Satelit (NDVI)' : `Operacije${brojOperacija !== null ? ` (${brojOperacija})` : ''}`}
+            {t === 'ndvi' ? 'Satelit' : t === 'vra' ? 'VRA' : `Operacije${brojOperacija !== null ? ` (${brojOperacija})` : ''}`}
           </button>
         ))}
       </div>
@@ -78,6 +90,11 @@ export function CesticaPanel({
       <div hidden={tab !== 'ndvi'}>
         <NdviPanel cestica={cestica} />
       </div>
+      {vraOtvoren && (
+        <div hidden={tab !== 'vra'}>
+          <VraTab cestica={cestica} gospodarstvoId={gospodarstvoId} smijeUpisivati={smijeUredjivati} />
+        </div>
+      )}
       <div hidden={tab !== 'operacije'}>
         <OperacijeTab cesticaId={cestica.id} gospodarstvoId={gospodarstvoId} kultura={cestica.kultura} smijeUpisivati={smijeUredjivati} onBroj={onBroj} />
       </div>

@@ -4,7 +4,7 @@
  *   GET /health
  *   GET /datumi?cestica=<uuid>                       dostupne snimke (zadnjih 150 dana)
  *   GET /stats?cestica=<uuid>&datum=YYYY-MM-DD        NDVI statistike (dijeljeni cache u Postgresu)
- *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje|ndmi|ndre PNG (dijeljeni Cache API)
+ *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje|ndmi|ndre|ndvi_sirovo PNG (dijeljeni Cache API)
  *   GET /trend?cestica=<uuid>                        NDVI kroz sezonu (jedan Sentinel poziv za sve što nije u cacheu)
  *
  * Svi osim /health traže `Authorization: Bearer <Supabase JWT>`. Čestica se čita iz baze s tim

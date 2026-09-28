@@ -10,6 +10,8 @@ import { publicEnv } from '../env';
 const STATS_VERZIJA = 2;
 
 export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje', 'ndmi', 'ndre'] as const;
+/** + interni sloj za VRA (sirovi NDVI, nije za prikaz) */
+export type SlojZaDohvat = Sloj | 'ndvi_sirovo';
 export type Sloj = (typeof SLOJEVI)[number];
 
 const SnimkeSchema = z.object({ snimke: z.array(z.object({ datum: z.string(), oblacnost: z.number().nullable() })) });
@@ -81,7 +83,7 @@ export async function dohvatiStats(cesticaId: string, datum: string): Promise<St
 }
 
 /** Vraća object URL (blob:) — MapLibre ga učita bez potrebe za auth headerom. Pozivatelj radi revokeObjectURL. */
-export async function dohvatiSliku(cesticaId: string, datum: string, sloj: Sloj): Promise<string> {
+export async function dohvatiSliku(cesticaId: string, datum: string, sloj: SlojZaDohvat): Promise<string> {
   const r = await poziv(`/slika?cestica=${cesticaId}&datum=${datum}&sloj=${sloj}`, 45_000);
   return URL.createObjectURL(await r.blob());
 }

@@ -311,3 +311,17 @@ describe('slojevi NDMI / NDRE', () => {
     for (const s of ['ndmi', 'ndre'] as const) expect(evalscriptZaSloj(s)).toContain('cist(s)');
   });
 });
+
+describe('sirovi NDVI za VRA', () => {
+  it('kodiranje u evalscriptu = kodirajNdvi iz domene (0.5 → 149, −0.2 → 1, 1.0 → 255, oblak → 0)', async () => {
+    const { evalscriptZaSloj } = await import('../src/evalscripts');
+    const src = evalscriptZaSloj('ndvi_sirovo');
+    // izvrši evaluatePixel kao Sentinel (bez mreže)
+    const evaluatePixel = new Function(`${src.replace('//VERSION=3', '')}; return evaluatePixel;`)() as (s: Record<string, number>) => number[];
+    const px = (b4: number, b8: number, scl = 4) => evaluatePixel({ B04: b4, B08: b8, SCL: scl, dataMask: 1 })[0];
+    expect(px(0.1, 0.3)).toBe(149); // NDVI 0.5
+    expect(px(0.3, 0.2)).toBe(1); // NDVI −0.2 (i niže → 1)
+    expect(px(0, 0.4)).toBe(255); // NDVI 1.0
+    expect(px(0.1, 0.3, 9)).toBe(0); // oblak
+  });
+});
