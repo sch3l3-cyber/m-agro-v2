@@ -109,7 +109,7 @@ export function VraTab({ cestica, gospodarstvoId, smijeUpisivati }: { cestica: C
   const osnovna = Math.max(0, Number(dozaTekst.replace(',', '.')) || 0);
 
   const plan = useMemo(
-    () => (rs?.status === 'ok' ? planVra(rs.data.pikseli, { n, cesticaHa: cestica.povrsinaHa, osnovnaDoza: osnovna, raspon, strategija }) : null),
+    () => (rs?.status === 'ok' ? planVra(rs.data.pikseli, { n, cesticaHa: cestica.povrsinaHa, osnovnaDoza: osnovna, raspon, strategija, sirina: rs.data.w }) : null),
     [rs, n, cestica.povrsinaHa, osnovna, raspon, strategija],
   );
   const boje = bojeZona(n);

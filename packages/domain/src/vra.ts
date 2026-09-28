@@ -109,27 +109,73 @@ export function dozeZona(osnovna: number, n: BrojZona, raspon: number, strategij
   });
 }
 
-/** Cijeli plan iz sirovih piksela (UINT8, vidi kodiranje gore). */
+/**
+ * Rubni piksel = čisti piksel kojem je barem jedan od 4 susjeda "nema podatka" (izvan čestice ili oblak)
+ * ili je na rubu slike. Na 10 m takav piksel je djelomično međa/put/susjedna kultura → lažno jača/slabija zona.
+ */
+export function rubniPikseli(pikseli: ArrayLike<number>, sirina: number): Uint8Array {
+  const h = Math.floor(pikseli.length / sirina);
+  const rub = new Uint8Array(pikseli.length);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < sirina; x++) {
+      const i = y * sirina + x;
+      if (pikseli[i] === 0) continue;
+      const prazno = (xx: number, yy: number) => xx < 0 || yy < 0 || xx >= sirina || yy >= h || pikseli[yy * sirina + xx] === 0;
+      if (prazno(x - 1, y) || prazno(x + 1, y) || prazno(x, y - 1) || prazno(x, y + 1)) rub[i] = 1;
+    }
+  return rub;
+}
+
+/** Cijeli plan iz sirovih piksela (UINT8, vidi kodiranje gore). `sirina` uključuje obradu rubnih piksela. */
 export function planVra(
   pikseli: ArrayLike<number>,
-  opcije: { n: BrojZona; cesticaHa: number; osnovnaDoza: number; raspon: number; strategija: Strategija },
+  opcije: { n: BrojZona; cesticaHa: number; osnovnaDoza: number; raspon: number; strategija: Strategija; sirina?: number },
 ): PlanVra {
-  const { n, cesticaHa, osnovnaDoza, raspon, strategija } = opcije;
+  const { n, cesticaHa, osnovnaDoza, raspon, strategija, sirina } = opcije;
+  const rub = sirina ? rubniPikseli(pikseli, sirina) : null;
   const ndvi: number[] = [];
-  for (let i = 0; i < pikseli.length; i++) {
-    const v = dekodirajNdvi(pikseli[i] as number);
-    if (v !== null) ndvi.push(v);
-  }
-  const pragovi = pragoviZona(ndvi, n);
-  const zonaPoPikselu = new Int8Array(pikseli.length).fill(-1);
-  const brojevi = new Array<number>(n).fill(0);
+  const unutra: number[] = [];
   for (let i = 0; i < pikseli.length; i++) {
     const v = dekodirajNdvi(pikseli[i] as number);
     if (v === null) continue;
-    const z = dodijeliZonu(v, pragovi, n);
-    zonaPoPikselu[i] = z;
-    brojevi[z] = (brojevi[z] as number) + 1;
+    ndvi.push(v);
+    if (!rub?.[i]) unutra.push(v);
   }
+  // pragovi iz unutrašnjosti (rubni pikseli su miješani s međom/putem); premala čestica → svi pikseli
+  const pragovi = pragoviZona(unutra.length >= 20 ? unutra : ndvi, n);
+  const zonaPoPikselu = new Int8Array(pikseli.length).fill(-1);
+  for (let i = 0; i < pikseli.length; i++) {
+    const v = dekodirajNdvi(pikseli[i] as number);
+    if (v !== null) zonaPoPikselu[i] = dodijeliZonu(v, pragovi, n);
+  }
+  // rubni piksel preuzima zonu najbližeg unutarnjeg susjeda (radijus 2), inače zadržava svoju
+  if (rub && sirina && unutra.length >= 20) {
+    const h = Math.floor(pikseli.length / sirina);
+    const izvorne = Int8Array.from(zonaPoPikselu);
+    for (let i = 0; i < pikseli.length; i++) {
+      if (!rub[i] || izvorne[i] === -1) continue;
+      const x = i % sirina;
+      const y = Math.floor(i / sirina);
+      let najbolja = -1;
+      let dMin = Infinity;
+      for (let dy = -2; dy <= 2; dy++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx;
+          const yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= sirina || yy >= h) continue;
+          const j = yy * sirina + xx;
+          if (rub[j] || izvorne[j] === -1) continue;
+          const d = dx * dx + dy * dy;
+          if (d < dMin) {
+            dMin = d;
+            najbolja = izvorne[j] as number;
+          }
+        }
+      if (najbolja >= 0) zonaPoPikselu[i] = najbolja;
+    }
+  }
+  const brojevi = new Array<number>(n).fill(0);
+  for (const z of zonaPoPikselu) if (z >= 0) brojevi[z] = (brojevi[z] as number) + 1;
   const postoci = postociIzBrojeva(brojevi);
   const doze = dozeZona(osnovnaDoza, n, raspon, strategija);
   const ukupnoPiks = ndvi.length;

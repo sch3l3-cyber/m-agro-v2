@@ -11,4 +11,6 @@
 - Postoci su cijeli brojevi s metodom najvećeg ostatka → zbroj je uvijek točno 100.
 - Doza po zoni: osnovna × (1 ± raspon) linearno; „kompenzacijska” (slabijima više) ili „produktivna” (jačima više).
 
+**Rubni pikseli:** piksel uz rub čestice (10 m) djelomično je međa/put → ne ulazi u pragove i preuzima zonu najbližeg unutarnjeg piksela (radijus 2).
+
 **Posljedice:** jednaki razmaci na nesimetričnoj čestici daju zone nejednake površine (npr. strnište s travnatim rubom → većina u zoni 1). To je istinit prikaz; opcija „jednake površine” (kvantili) može se dodati kao drugi *način*, ali kroz istu funkciju i iste piksele.

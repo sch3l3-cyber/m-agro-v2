@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BROJ_ZONA, dekodirajNdvi, dozeZona, kodirajNdvi, planVra, postociIzBrojeva, pragoviZona } from '../src/vra';
+import { BROJ_ZONA, dekodirajNdvi, dozeZona, kodirajNdvi, planVra, postociIzBrojeva, pragoviZona, rubniPikseli } from '../src/vra';
 
 // slučajni ali ponovljivi NDVI (0.3–0.85) + oblaci (0)
 function polje(n: number, seed = 7): Uint8Array {
@@ -62,5 +62,29 @@ describe('VRA zone (lekcija #12)', () => {
     const t = pragoviZona(v, 5);
     expect(t).toHaveLength(4);
     expect(t[0]).toBeCloseTo(0.05 + 0.9 / 5, 5);
+  });
+});
+
+describe('rubni pikseli', () => {
+  it('prsten jačeg NDVI-ja na rubu (međa) ne stvara vlastitu zonu kad je zadana širina', () => {
+    const w = 20;
+    const h = 20;
+    const px = new Uint8Array(w * h);
+    for (let y = 2; y < h - 2; y++)
+      for (let x = 2; x < w - 2; x++) {
+        const rubni = x === 2 || y === 2 || x === w - 3 || y === h - 3;
+        // unutra blagi gradijent 0.30–0.40, rub trava 0.80
+        px[y * w + x] = kodirajNdvi(rubni ? 0.8 : 0.3 + (x / w) * 0.1);
+      }
+    const bez = planVra(px, { n: 3, cesticaHa: 1, osnovnaDoza: 100, raspon: 0.2, strategija: 'kompenzacijska' });
+    const sa = planVra(px, { n: 3, cesticaHa: 1, osnovnaDoza: 100, raspon: 0.2, strategija: 'kompenzacijska', sirina: w });
+    // bez obrade: rub (trava) sam čini najjaču zonu
+    expect(bez.zone[2]?.postotak).toBeGreaterThan(20);
+    // s obradom: rub preuzima zone unutrašnjosti, pikseli se i dalje zbrajaju
+    expect(sa.zone.reduce((a, z) => a + z.piksela, 0)).toBe(sa.cistihPiksela);
+    expect(sa.zone.reduce((a, z) => a + z.postotak, 0)).toBe(100);
+    const unutarnjiMax = Math.max(...sa.zone.map((z) => z.postotak));
+    expect(unutarnjiMax).toBeLessThan(60); // zone su iz gradijenta unutrašnjosti, ne rub vs sve ostalo
+    expect(rubniPikseli(px, w).reduce((a, b) => a + b, 0)).toBe(4 * (w - 4) - 4);
   });
 });
