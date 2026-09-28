@@ -159,6 +159,7 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
       if (!b) return;
       const rub = useMapStore.getState().donjiRub;
       const h = map.getContainer().clientHeight;
+      if (h === 0) return;
       // premala vidljiva visina (npr. ploča raširena) → ne diraj kartu
       if (h - rub < 120) return;
       map.fitBounds(b, { padding: { top: 40, left: 40, right: 40, bottom: 40 + rub }, maxZoom: 17, duration });
@@ -167,10 +168,20 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
   );
 
   // Kontejner mijenja veličinu bez window resize (mobilni tab Karta/Lista, desni stupac) → map.resize()
+  // Ako je karta bila skrivena (mobilni tab Lista) dok je čestica odabrana, zumiraj kad postane vidljiva.
   useEffect(() => {
     const el = mapRef.current?.getContainer();
     if (!el) return;
-    const ro = new ResizeObserver(() => mapRef.current?.resize());
+    let prosla = el.clientHeight;
+    const ro = new ResizeObserver(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.resize();
+      const sada = el.clientHeight;
+      const { odabranaId } = useMapStore.getState();
+      if (prosla === 0 && sada > 0 && odabranaId) prikaziCesticu(map, odabranaId, 0);
+      prosla = sada;
+    });
     ro.observe(el);
     return () => ro.disconnect();
   });
