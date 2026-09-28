@@ -107,7 +107,8 @@ export default {
       if (url.pathname === '/stats') {
         const r = await statsSaCacheom(env, jwt, c.geomHash, c.geom, datum.data, ctx);
         if (!r) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
-        return json({ ...r.ishod, izCachea: r.izCachea }, 200, cors, 'private, max-age=86400');
+        // 'nema_snimke' se ne pamti — snimka može stići kasnije (obrada kasni za preletom)
+        return json({ ...r.ishod, izCachea: r.izCachea }, 200, cors, r.ishod.status === 'nema_snimke' ? 'no-store' : 'private, max-age=86400');
       }
 
       if (url.pathname === '/slika') {

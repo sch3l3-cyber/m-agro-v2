@@ -5,6 +5,9 @@ import { getAccessToken } from '../auth/browser';
 import { publicEnv } from '../env';
 
 /** Klijent za m-agro-v2-sentinel worker. Lekcija #14: timeout + jasna greška, nikad vječni spinner. */
+/** Povećaj kad se promijeni izračun statistike u sentinel workeru. */
+const STATS_VERZIJA = 2;
+
 export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje'] as const;
 export type Sloj = (typeof SLOJEVI)[number];
 
@@ -66,7 +69,8 @@ export async function dohvatiSnimke(cesticaId: string): Promise<Snimka[]> {
 }
 
 export async function dohvatiStats(cesticaId: string, datum: string): Promise<StatsIshod> {
-  const r = await poziv(`/stats?cestica=${cesticaId}&datum=${datum}`);
+  // v = verzija izračuna: promjena poništava odgovore koje je preglednik zapamtio (max-age)
+  const r = await poziv(`/stats?cestica=${cesticaId}&datum=${datum}&v=${STATS_VERZIJA}`);
   return StatsSchema.parse(await r.json());
 }
 
