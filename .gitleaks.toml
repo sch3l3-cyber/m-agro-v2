@@ -1,0 +1,9 @@
+# Gitleaks konfiguracija: zadana pravila + iznimka za Supabase PUBLISHABLE ključ.
+# Publishable ključ je javan po dizajnu (ide u preglednik, zaštitu radi RLS).
+# Secret ključevi (sb_secret_…) i dalje se hvataju.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Supabase publishable (javni) ključ"
+regexes = ['''sb_publishable_[A-Za-z0-9_-]+''']
