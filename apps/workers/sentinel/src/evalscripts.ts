@@ -54,9 +54,47 @@ function evaluatePixel(s){
 }`;
 }
 
-export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje'] as const;
+/**
+ * NDMI (vlaga u biljci): (B08−B11)/(B08+B11). Divergentna paleta suho (smeđe) → vlažno (plavozeleno).
+ * B11 je 20 m — na slici su pikseli krupniji nego kod NDVI-ja.
+ */
+const NDMI = `//VERSION=3
+function setup(){return{input:[{bands:["B08","B11","SCL","dataMask"]}],output:{bands:4,sampleType:"UINT8"}}}
+${MASKA}
+function evaluatePixel(s){
+  if(!cist(s))return[0,0,0,0];
+  var n=(s.B08-s.B11)/(s.B08+s.B11);
+  if(n<-0.2)return[140,81,10,255];
+  if(n<0)return[216,179,101,255];
+  if(n<0.2)return[246,232,195,255];
+  if(n<0.3)return[199,234,229,255];
+  if(n<0.4)return[90,180,172,255];
+  return[1,102,94,255];
+}`;
+
+/**
+ * NDRE (red-edge, klorofil/dušik): (B08−B05)/(B08+B05). Osjetljiviji od NDVI-ja kad je usjev gust
+ * (NDVI se "zasiti" iznad ~0.8). Sekvencijalna zelena paleta. B05 je 20 m.
+ */
+const NDRE = `//VERSION=3
+function setup(){return{input:[{bands:["B05","B08","SCL","dataMask"]}],output:{bands:4,sampleType:"UINT8"}}}
+${MASKA}
+function evaluatePixel(s){
+  if(!cist(s))return[0,0,0,0];
+  var n=(s.B08-s.B05)/(s.B08+s.B05);
+  if(n<0.1)return[255,255,204,255];
+  if(n<0.2)return[217,240,163,255];
+  if(n<0.3)return[173,221,142,255];
+  if(n<0.4)return[120,198,121,255];
+  if(n<0.5)return[49,163,84,255];
+  return[0,104,55,255];
+}`;
+
+export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje', 'ndmi', 'ndre'] as const;
 export type Sloj = (typeof SLOJEVI)[number];
 
+const EVALSCRIPTI: Record<Exclude<Sloj, 'kontrast'>, string> = { ndvi: NDVI, prave_boje: PRAVE_BOJE, ndmi: NDMI, ndre: NDRE };
+
 export function evalscriptZaSloj(sloj: Exclude<Sloj, 'kontrast'>): string {
-  return sloj === 'ndvi' ? NDVI : PRAVE_BOJE;
+  return EVALSCRIPTI[sloj];
 }

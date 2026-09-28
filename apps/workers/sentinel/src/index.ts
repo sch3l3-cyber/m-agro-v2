@@ -4,7 +4,7 @@
  *   GET /health
  *   GET /datumi?cestica=<uuid>                       dostupne snimke (zadnjih 150 dana)
  *   GET /stats?cestica=<uuid>&datum=YYYY-MM-DD        NDVI statistike (dijeljeni cache u Postgresu)
- *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje   PNG (dijeljeni Cache API)
+ *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje|ndmi|ndre PNG (dijeljeni Cache API)
  *   GET /trend?cestica=<uuid>                        NDVI kroz sezonu (jedan Sentinel poziv za sve što nije u cacheu)
  *
  * Svi osim /health traže `Authorization: Bearer <Supabase JWT>`. Čestica se čita iz baze s tim
@@ -13,7 +13,7 @@
  */
 import { z } from 'zod';
 import { evalscriptZaSloj, kontrastEvalscript, SLOJEVI } from './evalscripts';
-import { citajCache, citajCacheRaspon, dohvatiCesticu, korisnikIzJwt, NemaPristupa, pisiCache, pisiCacheVise, type SupabaseEnv } from './lib/supabase';
+import { citajCache, citajCacheRaspon, dohvatiCesticu, KvotaIscrpljena, korisnikIzJwt, NemaPristupa, pisiCache, pisiCacheVise, potrosiKvotu, type SupabaseEnv } from './lib/supabase';
 import { dostupniDatumi, getToken, SentinelError, slika, statistike, statistikeRaspon, type Snimka, type StatsIshod } from './lib/sentinel';
 
 export interface Env extends SupabaseEnv {
@@ -22,6 +22,8 @@ export interface Env extends SupabaseEnv {
   SENTINEL_CLIENT_SECRET: string;
   /** Workers Rate Limiting binding — štiti Sentinel kvotu (samo cache promašaji se broje) */
   LIMITER?: { limit(o: { key: string }): Promise<{ success: boolean }> };
+  /** Globalni mjesečni limit jedinica (≈ Sentinel poziva). Zadano 20000 (05_ROADMAP). */
+  SENTINEL_MJESECNI_LIMIT?: string;
 }
 
 const Uuid = z.uuid();
@@ -56,10 +58,19 @@ function jwtIz(req: Request): string | null {
   return a?.startsWith('Bearer ') ? a.slice(7) : null;
 }
 
-async function smijeSentinel(env: Env, jwt: string): Promise<boolean> {
-  if (!env.LIMITER) return true;
-  const { success } = await env.LIMITER.limit({ key: korisnikIzJwt(jwt) });
-  return success;
+/**
+ * Dvije razine zaštite prije SVAKOG Sentinel poziva (cache pogoci se ne broje):
+ *  1) po korisniku — Workers rate limit (false → 429 "pričekaj minutu")
+ *  2) globalno po mjesecu — brojač u Postgresu (iscrpljen → KvotaIscrpljena → 503; cache i dalje radi)
+ * `jedinice` ≈ trošak poziva (trend kroz sezonu troši više od jednog dana).
+ */
+async function smijeSentinel(env: Env, jwt: string, jedinice = 1): Promise<boolean> {
+  if (env.LIMITER) {
+    const { success } = await env.LIMITER.limit({ key: korisnikIzJwt(jwt) });
+    if (!success) return false;
+  }
+  if (!(await potrosiKvotu(env, jedinice, Number(env.SENTINEL_MJESECNI_LIMIT ?? 20000)))) throw new KvotaIscrpljena();
+  return true;
 }
 
 async function statsSaCacheom(env: Env, jwt: string, geomHash: string, geom: Parameters<typeof statistike>[1], datum: string, ctx: ExecutionContext) {
@@ -120,7 +131,8 @@ export default {
           for (const [d, i] of await citajCacheRaspon(env, jwt, c.geomHash, od, doD)) tocke.set(d, i);
           const fale = svi.filter((d) => !tocke.has(d));
           if (fale.length) {
-            if (!(await smijeSentinel(env, jwt))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+            // trošak raste s brojem dana u rasponu (P1D intervali)
+            if (!(await smijeSentinel(env, jwt, Math.max(1, Math.ceil(fale.length / 4))))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
             const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
             const novo = await statistikeRaspon(tok, c.geom, fale[0] as string, fale[fale.length - 1] as string);
             const zaUpis = new Map([...novo].filter(([d]) => fale.includes(d)));
@@ -174,6 +186,10 @@ export default {
       return greska(404, 'nepoznato', 'Nepoznata ruta', cors);
     } catch (err) {
       if (err instanceof NemaPristupa) return greska(err.status, 'pristup', err.message, cors);
+      if (err instanceof KvotaIscrpljena) {
+        console.error('[sentinel] mjesečna kvota iscrpljena');
+        return greska(503, 'kvota', 'Mjesečna satelitska kvota je potrošena. Već učitani podaci i dalje rade; nove snimke od 1. u mjesecu.', cors);
+      }
       if (err instanceof SentinelError) {
         console.error('[sentinel]', err.message);
         return greska(502, 'sentinel', 'Satelitski servis trenutno ne odgovara. Pokušaj za minutu.', cors);

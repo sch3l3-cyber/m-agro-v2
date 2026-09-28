@@ -262,3 +262,52 @@ describe('trend kroz sezonu', () => {
     expect(pozivi.some((p) => p.url.includes('/api/v1/statistics'))).toBe(false);
   });
 });
+
+describe('globalna mjesečna kvota', () => {
+  it('kvota iscrpljena → 503 s porukom, BEZ Sentinel poziva; cache pogodak i dalje radi', async () => {
+    mockFetch((u) => {
+      if (u.includes('/rest/v1/cestice')) return J([{ id: CID, geom_hash: 'h1', geom_arkod: GEOM }]);
+      if (u.includes('/rpc/sentinel_potrosi')) return J(false);
+      if (u.includes('/rest/v1/ndvi_cache') && u.includes('2026-05-16')) return J([{ status: 'ok', mean: 0.7, min: 0.5, max: 0.8, stdev: 0.04, percentiles: {}, sample_count: 800, cloud_pct: 2 }]);
+      if (u.includes('/rest/v1/ndvi_cache')) return J([]);
+      return undefined;
+    });
+    const r = await call(`/stats?cestica=${CID}&datum=2026-05-15`, auth);
+    expect(r.status).toBe(503);
+    expect(((await r.json()) as { greska: string }).greska).toBe('kvota');
+    expect(pozivi.some((p) => p.url.includes('dataspace'))).toBe(false);
+
+    const hit = await call(`/stats?cestica=${CID}&datum=2026-05-16`, auth);
+    expect(hit.status).toBe(200);
+  });
+
+  it('worker troši kvotu secret ključem, trend s više dana troši više jedinica', async () => {
+    const potrosnja: number[] = [];
+    mockFetch((u, init) => {
+      if (u.includes('/rest/v1/cestice')) return J([{ id: CID, geom_hash: 'h1', geom_arkod: GEOM }]);
+      if (u.includes('/rpc/sentinel_potrosi')) {
+        expect((init?.headers as Record<string, string>).apikey).toBe('secret');
+        potrosnja.push((JSON.parse(String(init?.body)) as { p_jedinice: number }).p_jedinice);
+        return J(true);
+      }
+      if (u.includes('openid-connect/token')) return J({ access_token: 't', expires_in: 600 });
+      if (u.includes('/catalog/')) return J({ features: Array.from({ length: 10 }, (_, i) => ({ properties: { datetime: `2026-06-${String(i + 1).padStart(2, '0')}T09:50:00Z`, 'eo:cloud_cover': 1 } })) });
+      if (u.includes('/rest/v1/ndvi_cache') && init?.method === 'POST') return new Response(null, { status: 201 });
+      if (u.includes('/rest/v1/ndvi_cache')) return J([]);
+      if (u.includes('/api/v1/statistics')) return J({ data: [] });
+      return undefined;
+    });
+    const r = await call(`/trend?cestica=${CID}`, auth);
+    expect(r.status).toBe(200);
+    expect(potrosnja).toEqual([1, 3]); // katalog = 1, trend za 10 dana = ceil(10/4)
+  });
+});
+
+describe('slojevi NDMI / NDRE', () => {
+  it('evalscripti koriste prave kanale i SCL masku', async () => {
+    const { evalscriptZaSloj } = await import('../src/evalscripts');
+    expect(evalscriptZaSloj('ndmi')).toMatch(/B08.*B11/s);
+    expect(evalscriptZaSloj('ndre')).toMatch(/B05.*B08/s);
+    for (const s of ['ndmi', 'ndre'] as const) expect(evalscriptZaSloj(s)).toContain('cist(s)');
+  });
+});

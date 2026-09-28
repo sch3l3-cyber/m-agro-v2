@@ -2,7 +2,7 @@
 
 Besplatna platforma za precizno poljodjelstvo za hrvatske OPG-ove. Druga iteracija — v1 ostaje u produkciji dok v2 ne dostigne paritet.
 
-**Status:** Faza 0 (temelji). Plan: `docs/brief/05_ROADMAP.md`. Odluke: `docs/adr/`. Postavljanje: `docs/SETUP.md`.
+**Status:** Faze 0–2 uglavnom gotove (auth, čestice, karta, NDVI + trend + slojevi, uređivanje čestica). Sljedeće: Faza 3 (operacije, offline). Plan: `docs/brief/05_ROADMAP.md`. Odluke: `docs/adr/`. Postavljanje: `docs/SETUP.md`.
 
 ```
 apps/web                 Next.js 16 → OpenNext → Cloudflare Worker `m-agro-v2-web`

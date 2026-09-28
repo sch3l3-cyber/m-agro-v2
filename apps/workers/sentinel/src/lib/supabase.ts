@@ -127,6 +127,36 @@ export async function pisiCacheVise(env: SupabaseEnv, geomHash: string, ishodi: 
   if (!r.ok) console.error('[ndvi_cache] skupni upis nije uspio', r.status, (await r.text()).slice(0, 200));
 }
 
+export class KvotaIscrpljena extends Error {
+  constructor() {
+    super('Mjesečna Sentinel kvota iscrpljena');
+    this.name = 'KvotaIscrpljena';
+  }
+}
+
+/**
+ * Atomarno troši `jedinice` iz mjesečne kvote (RPC sentinel_potrosi, samo service_role).
+ * Ako brojač nije dostupan (mreža, Supabase), pušta poziv (fail-open) i logira —
+ * per-korisnik rate limit i cache i dalje štite kvotu, a aplikacija ne pada zbog brojača.
+ */
+export async function potrosiKvotu(env: SupabaseEnv, jedinice: number, limit: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/sentinel_potrosi`, {
+      method: 'POST',
+      headers: { apikey: env.SUPABASE_SECRET_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ p_jedinice: jedinice, p_limit: limit }),
+    });
+    if (!r.ok) {
+      console.error('[kvota] brojač nedostupan', r.status, (await r.text()).slice(0, 200));
+      return true;
+    }
+    return (await r.json()) === true;
+  } catch (err) {
+    console.error('[kvota] brojač nedostupan', err);
+    return true;
+  }
+}
+
 /** `sub` iz JWT-a — koristi se SAMO za rate limit, nakon što je PostgREST već prihvatio token. */
 export function korisnikIzJwt(jwt: string): string {
   try {

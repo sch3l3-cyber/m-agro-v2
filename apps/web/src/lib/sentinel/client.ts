@@ -9,7 +9,7 @@ import { publicEnv } from '../env';
 /** Povećaj kad se promijeni izračun statistike u sentinel workeru. */
 const STATS_VERZIJA = 2;
 
-export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje'] as const;
+export const SLOJEVI = ['ndvi', 'kontrast', 'prave_boje', 'ndmi', 'ndre'] as const;
 export type Sloj = (typeof SLOJEVI)[number];
 
 const SnimkeSchema = z.object({ snimke: z.array(z.object({ datum: z.string(), oblacnost: z.number().nullable() })) });

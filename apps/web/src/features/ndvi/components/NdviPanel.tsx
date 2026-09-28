@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Cestica } from '@/lib/db';
 import { dohvatiSliku, dohvatiSnimke, dohvatiStats, dohvatiTrend, SentinelKlijentGreska, type Sloj, type Snimka, type StatsIshod, type TrendTocka } from '@/lib/sentinel/client';
 import { useMapStore } from '@/stores/mapStore';
-import { KONTRAST_LEGENDA, NDVI_RAZREDI, razred } from '../kategorije';
+import { KONTRAST_LEGENDA, NDMI_LEGENDA, NDRE_LEGENDA, NDVI_RAZREDI, razred } from '../kategorije';
 import { TrendGraf } from './TrendGraf';
 
-const SLOJ_LABEL: Record<Sloj, string> = { ndvi: 'NDVI', kontrast: 'Kontrast', prave_boje: 'Prave boje' };
+const SLOJ_LABEL: Record<Sloj, string> = { ndvi: 'NDVI', kontrast: 'Kontrast', prave_boje: 'Prave boje', ndmi: 'Vlaga', ndre: 'Dušik' };
 const fmtDatum = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'short' });
 const n2 = (x: number) => x.toFixed(2).replace('.', ',');
 
@@ -225,6 +225,35 @@ function Statistike({ s }: { s: Extract<StatsIshod, { status: 'ok' }>['stats'] }
 
 function Legenda({ sloj }: { sloj: Sloj }) {
   if (sloj === 'prave_boje') return null;
+  if (sloj === 'ndmi')
+    return (
+      <div>
+        <p className="mb-1 text-xs text-zinc-600">NDMI — vlaga u biljci (piksel 20 m)</p>
+        <ul className="grid grid-cols-3 gap-x-2 gap-y-0.5 text-xs">
+          {NDMI_LEGENDA.map((r) => (
+            <li key={r.naziv} className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 flex-shrink-0 rounded-sm ring-1 ring-zinc-300" style={{ background: r.boja }} aria-hidden />
+              {r.naziv}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  if (sloj === 'ndre')
+    return (
+      <div>
+        <p className="mb-1 text-xs text-zinc-600">NDRE — klorofil / dušik; razlikuje gust usjev gdje je NDVI već pun (piksel 20 m)</p>
+        <div className="flex h-2.5 overflow-hidden rounded-full ring-1 ring-zinc-200">
+          {NDRE_LEGENDA.map((b) => (
+            <span key={b} className="flex-1" style={{ background: b }} />
+          ))}
+        </div>
+        <p className="mt-1 flex justify-between text-xs text-zinc-600">
+          <span>manje (&lt; 0,1)</span>
+          <span>više (&gt; 0,5)</span>
+        </p>
+      </div>
+    );
   if (sloj === 'kontrast')
     return (
       <div>
