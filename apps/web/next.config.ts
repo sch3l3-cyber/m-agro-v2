@@ -11,7 +11,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   // Karta: Esri satelit + Esri nazivi (MapLibre dohvaća pločice fetchom → i connect-src)
   `img-src 'self' blob: data: ${supabaseUrl} https://*.workers.dev ${TILES}`,
-  `connect-src 'self' ${supabaseUrl} ${supabaseUrl.replace('https://', 'wss://')} https://*.workers.dev https://api.open-meteo.com ${TILES}`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseUrl.replace('https://', 'wss://')} https://*.workers.dev https://api.open-meteo.com ${TILES} blob:`,
   "worker-src 'self' blob:",
   "font-src 'self'",
   "frame-ancestors 'none'",

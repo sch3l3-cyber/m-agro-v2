@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import type { Cestica } from '@/lib/db';
 import { ListaCestica } from './ListaCestica';
+import { NdviPanel } from '@/features/ndvi/components/NdviPanel';
+import { useMapStore } from '@/stores/mapStore';
 
 // MapLibre (~800 KB) samo u browseru — ne ulazi u Worker bundle (ADR-0001, limit 3 MiB)
 const Karta = dynamic(() => import('./Karta'), {
@@ -20,6 +22,8 @@ const ha = new Intl.NumberFormat('hr-HR', { maximumFractionDigits: 2 });
 export function ParceleView({ cestice }: { cestice: Cestica[] }) {
   const [mobilniPrikaz, setMobilniPrikaz] = useState<'karta' | 'lista'>('karta');
   const ukupno = cestice.reduce((s, c) => s + c.povrsinaHa, 0);
+  const odabranaId = useMapStore((s) => s.odabranaId);
+  const odabrana = cestice.find((c) => c.id === odabranaId);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -44,8 +48,13 @@ export function ParceleView({ cestice }: { cestice: Cestica[] }) {
         <ListaCestica cestice={cestice} />
       </aside>
 
-      <section className={`${mobilniPrikaz === 'karta' ? 'flex' : 'hidden'} min-h-[60vh] flex-1 md:flex md:min-h-0`}>
+      <section className={`${mobilniPrikaz === 'karta' ? 'flex' : 'hidden'} relative min-h-[60vh] flex-1 md:flex md:min-h-0`}>
         <Karta cestice={cestice} />
+        {odabrana && (
+          <div className="absolute inset-x-2 bottom-8 z-10 md:inset-x-auto md:left-3 md:top-3 md:bottom-auto md:w-80">
+            <NdviPanel key={odabrana.id} cestica={odabrana} />
+          </div>
+        )}
       </section>
     </div>
   );

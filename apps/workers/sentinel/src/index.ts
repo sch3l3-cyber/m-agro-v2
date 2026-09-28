@@ -1,31 +1,152 @@
 /**
- * Sentinel Hub proxy — Faza 0: samo skeleton + /health.
- * Faza 2 porta v1 worker.js (auth, /dates, /stats BEZ resx/resy, /process) + shared cache.
+ * m-agro-v2-sentinel — Sentinel-2 NDVI za čestice.
+ *
+ *   GET /health
+ *   GET /datumi?cestica=<uuid>                       dostupne snimke (zadnjih 150 dana)
+ *   GET /stats?cestica=<uuid>&datum=YYYY-MM-DD        NDVI statistike (dijeljeni cache u Postgresu)
+ *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje   PNG (dijeljeni Cache API)
+ *
+ * Svi osim /health traže `Authorization: Bearer <Supabase JWT>`. Čestica se čita iz baze s tim
+ * JWT-om, pa RLS jamči da korisnik vidi snimke samo svojih čestica.
+ * Cache ključ je geom_hash (ADR-0002) → ista čestica = jedan Sentinel poziv za sve korisnike.
  */
-export interface Env {
+import { z } from 'zod';
+import { evalscriptZaSloj, kontrastEvalscript, SLOJEVI } from './evalscripts';
+import { citajCache, dohvatiCesticu, korisnikIzJwt, NemaPristupa, pisiCache, type SupabaseEnv } from './lib/supabase';
+import { dostupniDatumi, getToken, SentinelError, slika, statistike, type StatsIshod } from './lib/sentinel';
+
+export interface Env extends SupabaseEnv {
   ALLOWED_ORIGINS: string;
+  SENTINEL_CLIENT_ID: string;
+  SENTINEL_CLIENT_SECRET: string;
+  /** Workers Rate Limiting binding — štiti Sentinel kvotu (samo cache promašaji se broje) */
+  LIMITER?: { limit(o: { key: string }): Promise<{ success: boolean }> };
 }
 
-const json = (body: unknown, status = 200, extra: HeadersInit = {}) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra },
-  });
+const Uuid = z.uuid();
+const Datum = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((d) => d >= '2017-01-01' && d <= new Date().toISOString().slice(0, 10), 'Datum izvan raspona');
+const Sloj = z.enum(SLOJEVI);
 
-export function corsHeaders(origin: string | null, env: Env): HeadersInit {
+export function corsHeaders(origin: string | null, env: Pick<Env, 'ALLOWED_ORIGINS'>): Record<string, string> {
   const allowed = env.ALLOWED_ORIGINS.split(',').map((s) => s.trim());
   if (!origin || !allowed.includes(origin)) return {};
-  return { 'access-control-allow-origin': origin, vary: 'Origin' };
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-headers': 'authorization, content-type',
+    'access-control-allow-methods': 'GET, OPTIONS',
+    'access-control-max-age': '86400',
+    vary: 'Origin',
+  };
+}
+
+const json = (body: unknown, status: number, h: Record<string, string>, cache = 'no-store') =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache, ...h },
+  });
+
+const greska = (status: number, kod: string, poruka: string, h: Record<string, string>) => json({ greska: kod, poruka }, status, h);
+
+function jwtIz(req: Request): string | null {
+  const a = req.headers.get('authorization');
+  return a?.startsWith('Bearer ') ? a.slice(7) : null;
+}
+
+async function smijeSentinel(env: Env, jwt: string): Promise<boolean> {
+  if (!env.LIMITER) return true;
+  const { success } = await env.LIMITER.limit({ key: korisnikIzJwt(jwt) });
+  return success;
+}
+
+async function statsSaCacheom(env: Env, jwt: string, geomHash: string, geom: Parameters<typeof statistike>[1], datum: string, ctx: ExecutionContext) {
+  const cached = await citajCache(env, jwt, geomHash, datum);
+  if (cached) return { ishod: cached, izCachea: true };
+  if (!(await smijeSentinel(env, jwt))) return null;
+  const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
+  const ishod: StatsIshod = await statistike(tok, geom, datum);
+  ctx.waitUntil(pisiCache(env, geomHash, datum, ishod));
+  return { ishod, izCachea: false };
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const cors = corsHeaders(request.headers.get('origin'), env);
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(req.url);
+    const cors = corsHeaders(req.headers.get('origin'), env);
 
-    if (request.method === 'GET' && url.pathname === '/health') {
-      return json({ status: 'ok', service: 'sentinel', phase: 0 }, 200, cors);
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    if (req.method !== 'GET') return greska(405, 'metoda', 'Samo GET', cors);
+    if (url.pathname === '/health') return json({ status: 'ok', service: 'sentinel', faza: 2 }, 200, cors);
+
+    const jwt = jwtIz(req);
+    if (!jwt) return greska(401, 'prijava', 'Potrebna je prijava', cors);
+
+    const cid = Uuid.safeParse(url.searchParams.get('cestica'));
+    if (!cid.success) return greska(400, 'validacija', 'Neispravna čestica', cors);
+
+    try {
+      const c = await dohvatiCesticu(env, jwt, cid.data);
+
+      if (url.pathname === '/datumi') {
+        const kljuc = new Request(`https://cache.m-agro.internal/datumi/${c.geomHash}`);
+        const hit = await caches.default.match(kljuc);
+        if (hit) return new Response(hit.body, { headers: { ...Object.fromEntries(hit.headers), ...cors } });
+        if (!(await smijeSentinel(env, jwt))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+        const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
+        const snimke = await dostupniDatumi(tok, c.geom);
+        const res = json({ snimke }, 200, {}, 'public, max-age=21600'); // 6 h — novi prelet je svakih 2–5 dana
+        ctx.waitUntil(caches.default.put(kljuc, res.clone()));
+        return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
+      }
+
+      const datum = Datum.safeParse(url.searchParams.get('datum'));
+      if (!datum.success) return greska(400, 'validacija', 'Neispravan datum', cors);
+
+      if (url.pathname === '/stats') {
+        const r = await statsSaCacheom(env, jwt, c.geomHash, c.geom, datum.data, ctx);
+        if (!r) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+        return json({ ...r.ishod, izCachea: r.izCachea }, 200, cors, 'private, max-age=86400');
+      }
+
+      if (url.pathname === '/slika') {
+        const sloj = Sloj.safeParse(url.searchParams.get('sloj') ?? 'ndvi');
+        if (!sloj.success) return greska(400, 'validacija', 'Nepoznat sloj', cors);
+        const kljuc = new Request(`https://cache.m-agro.internal/slika/${c.geomHash}/${datum.data}/${sloj.data}.png`);
+        const hit = await caches.default.match(kljuc);
+        if (hit) return new Response(hit.body, { headers: { ...Object.fromEntries(hit.headers), ...cors } });
+
+        let evalscript: string;
+        if (sloj.data === 'kontrast') {
+          // raspon kontrasta = p5–p95 te čestice na taj dan (sezonski kontrast iz v1)
+          const r = await statsSaCacheom(env, jwt, c.geomHash, c.geom, datum.data, ctx);
+          if (!r) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+          if (r.ishod.status !== 'ok') return greska(404, r.ishod.status, 'Nema čistih piksela za taj datum', cors);
+          const p = r.ishod.stats.percentili;
+          evalscript = kontrastEvalscript(p['5.0'] ?? p['5'] ?? r.ishod.stats.min, p['95.0'] ?? p['95'] ?? r.ishod.stats.max);
+        } else {
+          evalscript = evalscriptZaSloj(sloj.data);
+        }
+
+        if (!(await smijeSentinel(env, jwt))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+        const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
+        const png = await slika(tok, c.geom, datum.data, evalscript);
+        // snimka za prošli datum se ne mijenja → dugi cache (30 dana)
+        const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=2592000, immutable' } });
+        ctx.waitUntil(caches.default.put(kljuc, res.clone()));
+        return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
+      }
+
+      return greska(404, 'nepoznato', 'Nepoznata ruta', cors);
+    } catch (err) {
+      if (err instanceof NemaPristupa) return greska(err.status, 'pristup', err.message, cors);
+      if (err instanceof SentinelError) {
+        console.error('[sentinel]', err.message);
+        return greska(502, 'sentinel', 'Satelitski servis trenutno ne odgovara. Pokušaj za minutu.', cors);
+      }
+      console.error('[sentinel] neočekivano', err);
+      return greska(500, 'interno', 'Neočekivana greška', cors);
     }
-    return json({ error: 'not_found' }, 404, cors);
   },
 } satisfies ExportedHandler<Env>;

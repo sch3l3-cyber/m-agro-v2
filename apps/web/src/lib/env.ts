@@ -10,6 +10,7 @@ const PublicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
   NEXT_PUBLIC_SITE_URL: z.url(),
+  NEXT_PUBLIC_SENTINEL_URL: z.url().default('https://m-agro-v2-sentinel.sch3l3.workers.dev'),
   NEXT_PUBLIC_FEATURE_AI: z.enum(['true', 'false']).default('false'),
   NEXT_PUBLIC_FEATURE_VRA7: z.enum(['true', 'false']).default('false'),
 });
@@ -24,6 +25,7 @@ export function publicEnv(): PublicEnv {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_SENTINEL_URL: process.env.NEXT_PUBLIC_SENTINEL_URL,
     NEXT_PUBLIC_FEATURE_AI: process.env.NEXT_PUBLIC_FEATURE_AI,
     NEXT_PUBLIC_FEATURE_VRA7: process.env.NEXT_PUBLIC_FEATURE_VRA7,
   });

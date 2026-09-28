@@ -162,5 +162,40 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
     [cestice],
   );
 
+  // NDVI snimka odabrane čestice (blob: PNG) — ispod obruba, iznad satelita
+  useEffect(
+    () =>
+      useMapStore.subscribe((st, prev) => {
+        if (st.overlay === prev.overlay) return;
+        const map = mapRef.current;
+        if (!map || !map.getSource('cestice')) return;
+        const o = st.overlay;
+        if (map.getLayer('ndvi-sloj')) map.removeLayer('ndvi-sloj');
+        if (map.getSource('ndvi')) map.removeSource('ndvi');
+        // odabrana čestica bez ispune dok se prikazuje snimka (da boja ne prekrije NDVI)
+        map.setPaintProperty('cestice-fill', 'fill-opacity', [
+          'case',
+          ['boolean', ['feature-state', 'odabrana'], false],
+          o ? 0 : 0.55,
+          0.35,
+        ]);
+        if (!o) return;
+        const [w, s, e, n] = o.bbox;
+        map.addSource('ndvi', {
+          type: 'image',
+          url: o.url,
+          coordinates: [
+            [w, n],
+            [e, n],
+            [e, s],
+            [w, s],
+          ],
+        });
+        // 'nearest' — prikaz stvarnih 10 m piksela, bez lažnog zaglađivanja
+        map.addLayer({ id: 'ndvi-sloj', type: 'raster', source: 'ndvi', paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.95 } }, 'cestice-obrub');
+      }),
+    [],
+  );
+
   return <div ref={el} className="h-full w-full" aria-label="Karta čestica" role="region" />;
 }

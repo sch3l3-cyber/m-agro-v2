@@ -7,8 +7,13 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
-    "ALLOWED_ORIGINS": "http://localhost:3000"
-  }
-  // Tajne (Faza 2): wrangler secret put SENTINEL_CLIENT_ID / SENTINEL_CLIENT_SECRET
-  // KV (rate limit) i R2 (NDVI cache) bindingi dolaze u Fazi 2.
+    "ALLOWED_ORIGINS": "https://m-agro-v2-web.sch3l3.workers.dev,http://localhost:3000",
+    "SUPABASE_URL": "https://klgdptmjnwvlzygneqcf.supabase.co",
+    // publishable ključ je javan po dizajnu (RLS štiti podatke)
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4koUJ8lcyqRjzRq8dzv1jw_r4i89J_K"
+  },
+  // 30 Sentinel poziva u minuti po korisniku (broje se samo cache promašaji)
+  "ratelimits": [{ "name": "LIMITER", "namespace_id": "4201", "simple": { "limit": 30, "period": 60 } }]
+  // TAJNE (Cloudflare dashboard → m-agro-v2-sentinel → Settings → Variables and Secrets):
+  //   SENTINEL_CLIENT_ID, SENTINEL_CLIENT_SECRET, SUPABASE_SECRET_KEY
 }
