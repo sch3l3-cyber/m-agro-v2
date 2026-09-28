@@ -30,3 +30,30 @@ describe('opisOperacije', () => {
     expect(opisOperacije({ tip: 'zetva', kultura: 'Pšenica', amount: 7.2, unit: 't/ha', vlaga: 13.5 })).toBe('Pšenica · 7,2 t/ha · vlaga 13,5 %');
   });
 });
+
+import { operacijeCsv, ukupnoInputa } from '../src/operacija';
+
+describe('ukupnoInputa', () => {
+  const b = { datum: '2026-03-01', cesticaNaziv: 'A', cesticaHa: 2 };
+  it('doza × površina, grupirano po nazivu (bez obzira na velika/mala slova)', () => {
+    const r = ukupnoInputa([
+      { ...b, tip: 'prihrana', fert: 'KAN', amount: 200, unit: 'kg/ha' },
+      { ...b, tip: 'prihrana', fert: 'kan', amount: 150, unit: 'kg/ha', cesticaHa: 1.5 },
+      { ...b, tip: 'zastita', product: 'Herbicid X', amount: 1.2, unit: 'l/ha' },
+      { ...b, tip: 'prihrana', fert: 'UREA', amount: null, unit: 'kg/ha' },
+      { ...b, tip: 'sjetva', kultura: 'Pšenica', amount: 250, unit: 'kg/ha' },
+    ]);
+    expect(r).toEqual([
+      { tip: 'prihrana', naziv: 'KAN', jedinica: 'kg', ukupno: 625, ha: 3.5, primjena: 2 },
+      { tip: 'zastita', naziv: 'Herbicid X', jedinica: 'l', ukupno: 2.4, ha: 2, primjena: 1 },
+    ]);
+  });
+});
+
+describe('operacijeCsv', () => {
+  it('BOM, točka-zarez, decimalni zarez, navodnici', () => {
+    const csv = operacijeCsv([{ datum: '2026-03-01', cesticaNaziv: 'NUMERA; istok', cesticaHa: 1.25, tip: 'prihrana', fert: 'KAN', amount: 187.5, unit: 'kg/ha', note: 'rekao "dosta"' }]);
+    expect(csv.startsWith('﻿Datum;Čestica')).toBe(true);
+    expect(csv).toContain('2026-03-01;"NUMERA; istok";1,25;Prihrana;;;KAN;187,5;kg/ha;;;;"rekao ""dosta"""');
+  });
+});

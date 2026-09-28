@@ -2,7 +2,7 @@ import 'server-only';
 import { UlogaSchema } from '@m-agro/domain';
 import { z } from 'zod';
 import { supabaseForRequest } from '../auth/supabase-server';
-import { DbError, type Cestica, type DbClient, type Operacija, type UvozIshod } from './types';
+import { DbError, type Cestica, type DbClient, type Operacija, type OperacijaSCesticom, type UvozIshod } from './types';
 import type { Json } from './database.types';
 
 const GeomSchema = z.object({
@@ -131,6 +131,42 @@ export const supabaseDb: DbClient = {
   },
 
   operacije: {
+    async listByGospodarstvo(gospodarstvoId, od, doDatum) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb
+        .from('operacije')
+        .select('id, cestica_id, tip, datum, kultura, sorta, fert, product, amount, unit, vlaga, hektolitarska, dubina, note, created_at, cestice!inner(naziv, povrsina_ha, gospodarstvo_id)')
+        .eq('cestice.gospodarstvo_id', gospodarstvoId)
+        .gte('datum', od)
+        .lte('datum', doDatum)
+        .order('datum', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      if (error) fail('operacije.listByGospodarstvo', error);
+      const n = (v: number | null) => (v === null ? null : Number(v));
+      return data.map(
+        (o): OperacijaSCesticom => ({
+          id: o.id,
+          cesticaId: o.cestica_id,
+          tip: o.tip,
+          datum: o.datum,
+          kultura: o.kultura,
+          sorta: o.sorta,
+          fert: o.fert,
+          product: o.product,
+          amount: n(o.amount),
+          unit: o.unit,
+          vlaga: n(o.vlaga),
+          hektolitarska: n(o.hektolitarska),
+          dubina: n(o.dubina),
+          note: o.note,
+          createdAt: o.created_at,
+          cesticaNaziv: o.cestice.naziv,
+          cesticaHa: Number(o.cestice.povrsina_ha ?? 0),
+        }),
+      );
+    },
+
     async listByCestica(cesticaId) {
       const sb = await supabaseForRequest();
       const { data, error } = await sb

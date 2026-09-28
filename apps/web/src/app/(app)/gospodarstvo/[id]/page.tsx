@@ -29,14 +29,22 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           </Link>
           <h1 className="truncate font-semibold">{gosp.naziv}</h1>
         </div>
-        {smijeUvoz && (
+        <div className="flex flex-shrink-0 gap-1">
           <Link
-            href={`/gospodarstvo/${id}/uvoz`}
-            className="inline-flex min-h-11 flex-shrink-0 items-center rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10"
+            href={`/gospodarstvo/${id}/operacije`}
+            className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10"
           >
-            Uvezi
+            Operacije
           </Link>
-        )}
+          {smijeUvoz && (
+            <Link
+              href={`/gospodarstvo/${id}/uvoz`}
+              className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10"
+            >
+              Uvezi
+            </Link>
+          )}
+        </div>
       </div>
 
       {uvoz && (

@@ -123,3 +123,67 @@ export function opisOperacije(o: {
 }
 
 export { danas as danasnjiDatum };
+
+// ---------------------------------------------------------------- pregled gospodarstva
+export interface OperacijaZaPregled {
+  tip: TipOperacije;
+  datum: string;
+  cesticaNaziv: string;
+  cesticaHa: number;
+  kultura?: string | null;
+  sorta?: string | null;
+  fert?: string | null;
+  product?: string | null;
+  amount?: number | null;
+  unit?: string | null;
+  vlaga?: number | null;
+  hektolitarska?: number | null;
+  dubina?: number | null;
+  note?: string | null;
+}
+
+export interface UkupnoInputa {
+  tip: 'prihrana' | 'zastita';
+  naziv: string;
+  /** npr. "kg", "l" — iz "kg/ha" */
+  jedinica: string;
+  ukupno: number;
+  /** zbroj površina tretiranih čestica (ista čestica dvaput = dvaput) */
+  ha: number;
+  primjena: number;
+}
+
+/**
+ * Ukupna potrošnja gnojiva i sredstava: doza (…/ha) × površina čestice.
+ * Unosi bez količine ili s jedinicom koja nije "po ha" ne ulaze u zbroj (ne može se preračunati).
+ */
+export function ukupnoInputa(ops: OperacijaZaPregled[]): UkupnoInputa[] {
+  const m = new Map<string, UkupnoInputa>();
+  for (const o of ops) {
+    if (o.tip !== 'prihrana' && o.tip !== 'zastita') continue;
+    const naziv = (o.tip === 'prihrana' ? o.fert : o.product)?.trim();
+    if (!naziv || o.amount == null || !o.unit?.endsWith('/ha')) continue;
+    const jedinica = o.unit.slice(0, -3);
+    const kljuc = `${o.tip}|${naziv.toLowerCase()}|${jedinica}`;
+    const u = m.get(kljuc) ?? { tip: o.tip, naziv, jedinica, ukupno: 0, ha: 0, primjena: 0 };
+    u.ukupno += o.amount * o.cesticaHa;
+    u.ha += o.cesticaHa;
+    u.primjena += 1;
+    m.set(kljuc, u);
+  }
+  return [...m.values()].sort((a, b) => a.tip.localeCompare(b.tip) || b.ukupno - a.ukupno);
+}
+
+/** CSV za Excel (hr): separator ";", decimalni zarez, BOM da se ČĆŽŠĐ vide ispravno. */
+export function operacijeCsv(ops: OperacijaZaPregled[]): string {
+  const br = (v: number | null | undefined) => (v == null ? '' : String(v).replace('.', ','));
+  const polje = (v: string | number | null | undefined) => {
+    const s = v == null ? '' : String(v);
+    return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const zaglavlje = ['Datum', 'Čestica', 'Površina (ha)', 'Vrsta', 'Kultura', 'Sorta', 'Gnojivo / sredstvo / obrada', 'Količina', 'Jedinica', 'Vlaga (%)', 'Hektolitar', 'Dubina (cm)', 'Bilješka'];
+  const redovi = ops.map((o) =>
+    [o.datum, o.cesticaNaziv, br(o.cesticaHa), TIP_LABEL[o.tip], o.kultura, o.sorta, o.fert ?? o.product, br(o.amount), o.unit, br(o.vlaga), br(o.hektolitarska), br(o.dubina), o.note].map(polje).join(';'),
+  );
+  return '﻿' + [zaglavlje.join(';'), ...redovi].join('\r\n');
+}

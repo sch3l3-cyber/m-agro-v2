@@ -75,7 +75,14 @@ export interface Operacija {
   createdAt: string;
 }
 
+export interface OperacijaSCesticom extends Operacija {
+  cesticaNaziv: string;
+  cesticaHa: number;
+}
+
 export interface OperacijeRepo {
+  /** Sve operacije gospodarstva u rasponu datuma (uključivo), najnovije prve. RLS: čitanje+. */
+  listByGospodarstvo(gospodarstvoId: string, od: string, doDatum: string): Promise<OperacijaSCesticom[]>;
   /** Najnovije prve. RLS: čitanje+. */
   listByCestica(cesticaId: string): Promise<Operacija[]>;
   /** RLS: član+. Isti localId na istoj čestici = ista operacija (idempotentno, bez duplikata). */
