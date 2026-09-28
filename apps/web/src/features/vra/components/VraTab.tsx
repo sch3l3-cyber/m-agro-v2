@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { bojeZona, BROJ_ZONA, planVra, vraCsv, type BrojZona, type Strategija } from '@m-agro/domain';
+import { bojeZona, BROJ_ZONA, planVra, vraCsv, type BrojZona, type MetodaZona, type Strategija } from '@m-agro/domain';
 import type { Cestica } from '@/lib/db';
 import { dohvatiSliku, dohvatiTrend, SentinelKlijentGreska } from '@/lib/sentinel/client';
 import { jeGreskaMreze, uRed } from '@/lib/offline/red';
@@ -106,11 +106,12 @@ export function VraTab({ cestica, gospodarstvoId, smijeUpisivati }: { cestica: C
   const [dozaTekst, setDozaTekst] = useState('150');
   const [raspon, setRaspon] = useState(0.2);
   const [strategija, setStrategija] = useState<Strategija>('kompenzacijska');
+  const [metoda, setMetoda] = useState<MetodaZona>('razmaci');
   const osnovna = Math.max(0, Number(dozaTekst.replace(',', '.')) || 0);
 
   const plan = useMemo(
-    () => (rs?.status === 'ok' ? planVra(rs.data.pikseli, { n, cesticaHa: cestica.povrsinaHa, osnovnaDoza: osnovna, raspon, strategija, sirina: rs.data.w }) : null),
-    [rs, n, cestica.povrsinaHa, osnovna, raspon, strategija],
+    () => (rs?.status === 'ok' ? planVra(rs.data.pikseli, { n, cesticaHa: cestica.povrsinaHa, osnovnaDoza: osnovna, raspon, strategija, sirina: rs.data.w, metoda }) : null),
+    [rs, n, cestica.povrsinaHa, osnovna, raspon, strategija, metoda],
   );
   const boje = bojeZona(n);
 
@@ -214,6 +215,13 @@ export function VraTab({ cestica, gospodarstvoId, smijeUpisivati }: { cestica: C
                 ±{r * 100} %
               </option>
             ))}
+          </select>
+        </label>
+        <label className="col-span-2 flex flex-col gap-1 text-sm">
+          <span className="font-medium">Podjela zona</span>
+          <select value={metoda} onChange={(e) => setMetoda(e.target.value as MetodaZona)} className="min-h-11 rounded-lg border border-zinc-300 bg-white px-2">
+            <option value="razmaci">po razlikama u usjevu (jednaki NDVI razmaci)</option>
+            <option value="povrsine">jednake površine zona</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">

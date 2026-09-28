@@ -88,3 +88,11 @@ describe('rubni pikseli', () => {
     expect(rubniPikseli(px, w).reduce((a, b) => a + b, 0)).toBe(4 * (w - 4) - 4);
   });
 });
+
+describe('metoda jednake površine', () => {
+  it.each(BROJ_ZONA)('%i zona: svaka zona ≈ 100/n % površine', (n) => {
+    const p = planVra(polje(6000, 3), { n, cesticaHa: 5, osnovnaDoza: 100, raspon: 0.2, strategija: 'kompenzacijska', metoda: 'povrsine' });
+    for (const z of p.zone) expect(Math.abs(z.postotak - 100 / n)).toBeLessThan(3);
+    expect(p.zone.reduce((a, z) => a + z.postotak, 0)).toBe(100);
+  });
+});

@@ -35,15 +35,21 @@ function kvantil(sortirano: Float32Array | number[], q: number): number {
 export const MIN_RASPON = 0.02;
 
 /**
- * Pragovi (n−1 vrijednosti, rastuće): jednaki razmaci između p5 i p95 čestice.
+ * Pragovi (n−1 vrijednosti, rastuće).
+ *  - 'razmaci' (zadano): jednaki NDVI razmaci između p5 i p95 — zone prate stvarne razlike u usjevu
+ *  - 'povrsine': kvantili — zone jednake površine (korisno kad je većina čestice zbijena u uskom rasponu)
  * Isti algoritam za 3, 5 i 7 zona; krajnjih 5 % s obje strane pada u rubne zone (šum, rubovi).
  * Ujednačena čestica → prazna lista (vidi dodijeliZonu).
  */
-export function pragoviZona(vrijednosti: ArrayLike<number>, n: BrojZona): number[] {
+export type MetodaZona = 'razmaci' | 'povrsine';
+
+export function pragoviZona(vrijednosti: ArrayLike<number>, n: BrojZona, metoda: MetodaZona = 'razmaci'): number[] {
   const s = Float32Array.from(vrijednosti).sort();
   const p5 = kvantil(s, 0.05);
   const p95 = kvantil(s, 0.95);
   if (!(p95 - p5 >= MIN_RASPON)) return [];
+  // 'povrsine': kvantili → svaka zona ≈ jednak dio čestice (pragovi se ne ponavljaju ni kad su vrijednosti zbijene)
+  if (metoda === 'povrsine') return Array.from({ length: n - 1 }, (_, i) => kvantil(s, (i + 1) / n));
   return Array.from({ length: n - 1 }, (_, i) => p5 + ((p95 - p5) * (i + 1)) / n);
 }
 
@@ -129,9 +135,9 @@ export function rubniPikseli(pikseli: ArrayLike<number>, sirina: number): Uint8A
 /** Cijeli plan iz sirovih piksela (UINT8, vidi kodiranje gore). `sirina` uključuje obradu rubnih piksela. */
 export function planVra(
   pikseli: ArrayLike<number>,
-  opcije: { n: BrojZona; cesticaHa: number; osnovnaDoza: number; raspon: number; strategija: Strategija; sirina?: number },
+  opcije: { n: BrojZona; cesticaHa: number; osnovnaDoza: number; raspon: number; strategija: Strategija; sirina?: number; metoda?: MetodaZona },
 ): PlanVra {
-  const { n, cesticaHa, osnovnaDoza, raspon, strategija, sirina } = opcije;
+  const { n, cesticaHa, osnovnaDoza, raspon, strategija, sirina, metoda = 'razmaci' } = opcije;
   const rub = sirina ? rubniPikseli(pikseli, sirina) : null;
   const ndvi: number[] = [];
   const unutra: number[] = [];
@@ -142,7 +148,7 @@ export function planVra(
     if (!rub?.[i]) unutra.push(v);
   }
   // pragovi iz unutrašnjosti (rubni pikseli su miješani s međom/putem); premala čestica → svi pikseli
-  const pragovi = pragoviZona(unutra.length >= 20 ? unutra : ndvi, n);
+  const pragovi = pragoviZona(unutra.length >= 20 ? unutra : ndvi, n, metoda);
   const zonaPoPikselu = new Int8Array(pikseli.length).fill(-1);
   for (let i = 0; i < pikseli.length; i++) {
     const v = dekodirajNdvi(pikseli[i] as number);
