@@ -4,3 +4,4 @@ export * from './uloge';
 export * from './auth';
 export * from './lpis';
 export * from './uvoz-dto';
+export * from './cestica';

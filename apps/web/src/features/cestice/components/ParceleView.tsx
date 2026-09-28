@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import type { Cestica } from '@/lib/db';
 import { ListaCestica } from './ListaCestica';
+import { UrediCesticu } from './UrediCesticu';
 import { NdviPanel } from '@/features/ndvi/components/NdviPanel';
 import { useMapStore } from '@/stores/mapStore';
 
@@ -19,8 +20,20 @@ const ha = new Intl.NumberFormat('hr-HR', { maximumFractionDigits: 2 });
  * Mobitel: karta gore, lista dolje (prekidač "Karta/Lista" za puni ekran).
  * Desktop: lista lijevo, karta desno. Bez position:sticky (lekcija #6).
  */
-export function ParceleView({ cestice }: { cestice: Cestica[] }) {
+export function ParceleView({
+  cestice,
+  gospodarstvoId,
+  smijeUredjivati,
+  smijeBrisati,
+}: {
+  cestice: Cestica[];
+  gospodarstvoId: string;
+  smijeUredjivati: boolean;
+  smijeBrisati: boolean;
+}) {
   const [mobilniPrikaz, setMobilniPrikaz] = useState<'karta' | 'lista'>('karta');
+  // id čestice koja se uređuje; druga odabrana čestica automatski zatvara obrazac
+  const [uredjujeId, setUredjujeId] = useState<string | null>(null);
   const ukupno = cestice.reduce((s, c) => s + c.povrsinaHa, 0);
   const odabranaId = useMapStore((s) => s.odabranaId);
   const odabrana = cestice.find((c) => c.id === odabranaId);
@@ -52,7 +65,17 @@ export function ParceleView({ cestice }: { cestice: Cestica[] }) {
         <Karta cestice={cestice} />
         {odabrana && (
           <div className="absolute inset-x-2 bottom-8 z-10 md:inset-x-auto md:left-3 md:top-3 md:bottom-auto md:w-80">
-            <NdviPanel key={odabrana.id} cestica={odabrana} />
+            {uredjujeId === odabrana.id ? (
+              <UrediCesticu
+                key={odabrana.id}
+                cestica={odabrana}
+                gospodarstvoId={gospodarstvoId}
+                smijeBrisati={smijeBrisati}
+                onZatvori={() => setUredjujeId(null)}
+              />
+            ) : (
+              <NdviPanel key={odabrana.id} cestica={odabrana} {...(smijeUredjivati && { onUredi: () => setUredjujeId(odabrana.id) })} />
+            )}
           </div>
         )}
       </section>

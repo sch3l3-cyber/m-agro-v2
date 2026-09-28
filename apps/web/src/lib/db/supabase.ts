@@ -107,6 +107,21 @@ export const supabaseDb: DbClient = {
       if (error) fail('cestice.uvezi', error);
       return IshodSchema.parse(data) satisfies UvozIshod;
     },
+
+    async update(id, patch) {
+      const sb = await supabaseForRequest();
+      const { error, count } = await sb.from('cestice').update({ naziv: patch.naziv, kultura: patch.kultura }, { count: 'exact' }).eq('id', id);
+      if (error) fail('cestice.update', error);
+      // RLS tiho filtrira na 0 redaka (npr. uloga "citanje") — ne smije izgledati kao uspjeh
+      if (count === 0) throw new DbError('cestice.update: nema pristupa ili zapis ne postoji', 'not_found');
+    },
+
+    async remove(id) {
+      const sb = await supabaseForRequest();
+      const { error, count } = await sb.from('cestice').delete({ count: 'exact' }).eq('id', id);
+      if (error) fail('cestice.remove', error);
+      if (count === 0) throw new DbError('cestice.remove: nema pristupa ili zapis ne postoji', 'not_found');
+    },
   },
 
   async ping() {

@@ -26,7 +26,7 @@ function bboxOf(c: Cestica): [number, number, number, number] {
 type Stanje<T> = { status: 'ucitavam' } | { status: 'greska'; poruka: string } | { status: 'ok'; data: T };
 const poruka = (err: unknown) => (err instanceof SentinelKlijentGreska ? err.message : 'Nešto je pošlo po zlu.');
 
-export function NdviPanel({ cestica }: { cestica: Cestica }) {
+export function NdviPanel({ cestica, onUredi }: { cestica: Cestica; onUredi?: () => void }) {
   const postaviOverlay = useMapStore((s) => s.postaviOverlay);
   // Panel je ključan po čestici (key={id}), pa se stanje resetira samim remountom.
   const [snimke, setSnimke] = useState<Stanje<Snimka[]>>({ status: 'ucitavam' });
@@ -92,9 +92,22 @@ export function NdviPanel({ cestica }: { cestica: Cestica }) {
 
   return (
     <div className="flex max-h-[55vh] flex-col gap-3 overflow-y-auto rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-zinc-200 backdrop-blur md:max-h-[70vh]">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="truncate font-semibold">{cestica.naziv}</p>
-        <p className="flex-shrink-0 text-sm text-zinc-600">{n2(cestica.povrsinaHa)} ha</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{cestica.naziv}</p>
+          <p className="text-sm text-zinc-600">
+            {n2(cestica.povrsinaHa)} ha{cestica.kultura && ` · ${cestica.kultura}`}
+          </p>
+        </div>
+        {onUredi && (
+          <button
+            type="button"
+            onClick={onUredi}
+            className="min-h-11 flex-shrink-0 rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10"
+          >
+            Uredi
+          </button>
+        )}
       </div>
 
       {/* Datumi */}

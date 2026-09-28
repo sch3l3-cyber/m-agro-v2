@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(26);
+select plan(28);
 
 -- ---------------------------------------------------------------- fixture
 insert into auth.users (id, email) values
@@ -121,6 +121,10 @@ select throws_ok(
      values ('10000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b', 'vlasnik') $$,
   '42501', null, 'Čitač ne može dodavati članove');
 
+delete from cestice where id = '20000000-0000-0000-0000-00000000000a';
+select is((select count(*)::int from cestice where id = '20000000-0000-0000-0000-00000000000a'), 1,
+  'Čitač ne može obrisati česticu (samo vlasnik)');
+
 -- ---------------------------------------------------------------- anon
 select pg_temp.logout();
 set local role anon;
@@ -136,6 +140,12 @@ select is((select count(*)::int from app_admins), 1, 'app_admins nepromijenjen')
 select pg_temp.login('00000000-0000-0000-0000-00000000000d');
 select is((select count(*)::int from cestice), 2, 'Admin vidi sve čestice');
 select ok((select count(*) > 0 from audit_log where action = 'gospodarstva.insert'), 'Audit log bilježi kreiranje gospodarstva');
+
+-- ---------------------------------------------------------------- uređivanje čestice (naziv, kultura)
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+update cestice set naziv = 'Ciglana istok', kultura = 'Pšenica' where id = '20000000-0000-0000-0000-00000000000a';
+select is((select naziv || '/' || kultura from cestice where id = '20000000-0000-0000-0000-00000000000a'), 'Ciglana istok/Pšenica',
+  'Vlasnik mijenja naziv i kulturu čestice');
 
 -- ---------------------------------------------------------------- brisanje gospodarstva (kaskada + guard)
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');

@@ -49,6 +49,10 @@ export interface CesticeRepo {
   listByGospodarstvo(gospodarstvoId: string): Promise<Cestica[]>;
   /** Transakcijski uvoz (sve ili ništa). */
   uvezi(gospodarstvoId: string, cestice: UvozCesticaDto[], mod: UvozMod): Promise<UvozIshod>;
+  /** Naziv/kultura. RLS: član+. 0 izmijenjenih redaka → DbError 'not_found'. */
+  update(id: string, patch: { naziv: string; kultura: string | null }): Promise<void>;
+  /** RLS: samo vlasnik. Kaskadno briše operacije; audit trigger bilježi brisanje. */
+  remove(id: string): Promise<void>;
 }
 
 export interface DbClient {

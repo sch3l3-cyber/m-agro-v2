@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { assertWGS84, MAX_CESTICA_PO_UVOZU, UvozCesticaDtoSchema, UvozModSchema } from '@m-agro/domain';
+import { assertWGS84, MAX_CESTICA_PO_UVOZU, UrediCesticuSchema, UvozCesticaDtoSchema, UvozModSchema } from '@m-agro/domain';
 import { DbError, getDb, type UvozIshod } from '@/lib/db';
 
 const UlazSchema = z.object({
@@ -37,5 +37,41 @@ export async function uveziCestice(ulaz: unknown): Promise<UvozOdgovor> {
     }
     if (err instanceof DbError && err.code === '23514') return { ok: false, poruka: 'Neka čestica nije u WGS84 koordinatama.' };
     return { ok: false, poruka: 'Uvoz nije uspio — ništa nije spremljeno. Pokušaj ponovo.' };
+  }
+}
+
+// ---------------------------------------------------------------- uređivanje / brisanje
+export type AkcijaOdgovor = { ok: true } | { ok: false; poruka: string };
+
+const UrediUlaz = z.object({ id: z.uuid(), gospodarstvoId: z.uuid() }).and(UrediCesticuSchema);
+
+export async function urediCesticu(ulaz: unknown): Promise<AkcijaOdgovor> {
+  const p = UrediUlaz.safeParse(ulaz);
+  if (!p.success) return { ok: false, poruka: p.error.issues[0]?.message ?? 'Podaci nisu ispravni.' };
+  try {
+    await getDb().cestice.update(p.data.id, { naziv: p.data.naziv, kultura: p.data.kultura });
+    revalidatePath(`/gospodarstvo/${p.data.gospodarstvoId}`);
+    return { ok: true };
+  } catch (err) {
+    console.error('[cestice] uredi', err);
+    if (err instanceof DbError && (err.code === 'not_found' || err.code === '42501')) return { ok: false, poruka: 'Nemaš pravo mijenjati ovu česticu.' };
+    if (err instanceof DbError && err.code === '23505') return { ok: false, poruka: 'Čestica s tim ARKOD brojem već postoji.' };
+    return { ok: false, poruka: 'Spremanje nije uspjelo. Pokušaj ponovo.' };
+  }
+}
+
+const ObrisiUlaz = z.object({ id: z.uuid(), gospodarstvoId: z.uuid() });
+
+export async function obrisiCesticu(ulaz: unknown): Promise<AkcijaOdgovor> {
+  const p = ObrisiUlaz.safeParse(ulaz);
+  if (!p.success) return { ok: false, poruka: 'Podaci nisu ispravni.' };
+  try {
+    await getDb().cestice.remove(p.data.id);
+    revalidatePath(`/gospodarstvo/${p.data.gospodarstvoId}`);
+    return { ok: true };
+  } catch (err) {
+    console.error('[cestice] obrisi', err);
+    if (err instanceof DbError && (err.code === 'not_found' || err.code === '42501')) return { ok: false, poruka: 'Samo vlasnik gospodarstva može brisati čestice.' };
+    return { ok: false, poruka: 'Brisanje nije uspjelo. Pokušaj ponovo.' };
   }
 }

@@ -63,7 +63,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           </div>
         </div>
       ) : (
-        <ParceleView cestice={cestice} />
+        <ParceleView cestice={cestice} gospodarstvoId={id} smijeUredjivati={smijeUvoz} smijeBrisati={imaOvlast(gosp.uloga, 'vlasnik')} />
       )}
     </>
   );
