@@ -2,14 +2,23 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useCallback, useEffect, useRef } from 'react';
-import { GeolocateControl, Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
+import { addProtocol, GeolocateControl, Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import type { Cestica } from '@/lib/db';
 import { useMapStore } from '@/stores/mapStore';
 import { bojaCestice } from '../boje';
 import { version as MAPLIBRE_VERZIJA } from 'maplibre-gl/package.json';
 
 // Worker se poslužuje iz public/ (scripts/kopiraj-maplibre-worker.mjs) — bundler ga ne kopira sam
-if (typeof window !== 'undefined') setWorkerUrl(`${window.location.origin}/maplibre/${MAPLIBRE_VERZIJA}/maplibre-gl-worker.mjs`);
+if (typeof window !== 'undefined') {
+  setWorkerUrl(`${window.location.origin}/maplibre/${MAPLIBRE_VERZIJA}/maplibre-gl-worker.mjs`);
+  // Pločice se dohvaćaju u GLAVNOJ niti (addProtocol), ne u MapLibre workeru — samo tako ih service worker
+  // vidi i sprema, pa satelitska podloga polja koja si gledao radi i bez signala (Faza 3.2).
+  addProtocol('plocica', async (params, abort) => {
+    const r = await fetch(params.url.replace('plocica://', 'https://'), { signal: abort.signal });
+    if (!r.ok) throw new Error(`pločica ${r.status}`);
+    return { data: await r.arrayBuffer() };
+  });
+}
 
 // Satelitska podloga kao u v1 (Esri World Imagery) + nazivi mjesta (Esri Reference)
 const STIL: StyleSpecification = {
@@ -17,7 +26,7 @@ const STIL: StyleSpecification = {
   sources: {
     satelit: {
       type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tiles: ['plocica://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
       maxzoom: 19,
       attribution: 'Snimke i nazivi © Esri, Maxar, Earthstar Geographics',
@@ -25,7 +34,7 @@ const STIL: StyleSpecification = {
     // Carto je uveo API ključ (vodeni žig "API KEY REQUIRED") — Esri referentni sloj je besplatan uz atribuciju
     nazivi: {
       type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
+      tiles: ['plocica://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
       maxzoom: 19,
     },
