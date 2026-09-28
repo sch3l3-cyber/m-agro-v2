@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(25);
+select plan(26);
 
 -- ---------------------------------------------------------------- fixture
 insert into auth.users (id, email) values
@@ -44,6 +44,12 @@ insert into cestice (id, gospodarstvo_id, arkod_id, naziv, geom_arkod)
 select pg_temp.logout();
 insert into ndvi_cache (geom_hash, datum, mean)
   select geom_hash, '2026-05-15', 0.71 from cestice where id = '20000000-0000-0000-0000-00000000000b';
+
+-- Regresija: aplikacija radi INSERT ... RETURNING (supabase .insert().select())
+select pg_temp.login('00000000-0000-0000-0000-00000000000a');
+select lives_ok($$ insert into gospodarstva (naziv) values ('OPG A2') returning id $$,
+  'Kreiranje gospodarstva s RETURNING radi (bug 2026-09-28)');
+delete from gospodarstva where naziv = 'OPG A2';
 
 -- ---------------------------------------------------------------- izolacija A/B
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');
