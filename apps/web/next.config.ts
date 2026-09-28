@@ -2,14 +2,14 @@ import type { NextConfig } from 'next';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const TILES = 'https://server.arcgisonline.com https://*.basemaps.cartocdn.com';
+const TILES = 'https://server.arcgisonline.com';
 
 // 03_SIGURNOST.md — CSP. 'unsafe-inline' za skripte je potreban dok ne uvedemo nonce (Faza 1).
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''),
   "style-src 'self' 'unsafe-inline'",
-  // Karta: Esri satelit + Carto nazivi (MapLibre dohvaća pločice fetchom → i connect-src)
+  // Karta: Esri satelit + Esri nazivi (MapLibre dohvaća pločice fetchom → i connect-src)
   `img-src 'self' blob: data: ${supabaseUrl} https://*.workers.dev ${TILES}`,
   `connect-src 'self' ${supabaseUrl} ${supabaseUrl.replace('https://', 'wss://')} https://*.workers.dev https://api.open-meteo.com ${TILES}`,
   "worker-src 'self' blob:",

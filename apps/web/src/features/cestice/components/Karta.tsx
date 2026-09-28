@@ -11,7 +11,7 @@ import { version as MAPLIBRE_VERZIJA } from 'maplibre-gl/package.json';
 // Worker se poslužuje iz public/ (scripts/kopiraj-maplibre-worker.mjs) — bundler ga ne kopira sam
 if (typeof window !== 'undefined') setWorkerUrl(`${window.location.origin}/maplibre/${MAPLIBRE_VERZIJA}/maplibre-gl-worker.mjs`);
 
-// Satelitska podloga kao u v1 (Esri World Imagery) + nazivi mjesta (Carto)
+// Satelitska podloga kao u v1 (Esri World Imagery) + nazivi mjesta (Esri Reference)
 const STIL: StyleSpecification = {
   version: 8,
   sources: {
@@ -20,18 +20,19 @@ const STIL: StyleSpecification = {
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
       maxzoom: 19,
-      attribution: 'Snimke © Esri, Maxar, Earthstar Geographics',
+      attribution: 'Snimke i nazivi © Esri, Maxar, Earthstar Geographics',
     },
+    // Carto je uveo API ključ (vodeni žig "API KEY REQUIRED") — Esri referentni sloj je besplatan uz atribuciju
     nazivi: {
       type: 'raster',
-      tiles: ['https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}@2x.png'],
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
-      attribution: '© OpenStreetMap © CARTO',
+      maxzoom: 19,
     },
   },
   layers: [
     { id: 'satelit', type: 'raster', source: 'satelit' },
-    { id: 'nazivi', type: 'raster', source: 'nazivi', paint: { 'raster-opacity': 0.8 } },
+    { id: 'nazivi', type: 'raster', source: 'nazivi', paint: { 'raster-opacity': 0.9 } },
   ],
 };
 
