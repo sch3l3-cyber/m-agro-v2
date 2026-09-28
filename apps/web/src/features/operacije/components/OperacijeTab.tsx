@@ -1,10 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
-import { GNOJIVA, JEDINICE, KULTURE, OBRADE, TIP_LABEL, TIPOVI_OPERACIJA, opisOperacije, type TipOperacije } from '@m-agro/domain';
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react';
+import { GNOJIVA, JEDINICE, KULTURE, NovaOperacijaSchema, OBRADE, TIP_LABEL, TIPOVI_OPERACIJA, opisOperacije, type TipOperacije } from '@m-agro/domain';
 import { Button } from '@/components/ui/button';
 import type { Operacija } from '@/lib/db';
+import { idbSpremiste, jeGreskaMreze, pretplati, spremiListu, stanjeReda, ucitajListu, uRed } from '@/lib/offline/red';
+import type { StavkaReda } from '@/lib/offline/sinkronizacija';
 import { dodajOperaciju, obrisiOperaciju, ucitajOperacije } from '../actions';
 
 const fmtDatum = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'numeric', year: 'numeric' });
@@ -22,7 +24,7 @@ const TIP_BOJA: Record<TipOperacije, string> = {
   ostalo: 'bg-zinc-100 text-zinc-800',
 };
 
-type Stanje = { status: 'ucitavam' } | { status: 'greska'; poruka: string } | { status: 'ok'; data: Operacija[] };
+type Stanje = { status: 'ucitavam' } | { status: 'greska'; poruka: string } | { status: 'ok'; data: Operacija[]; izMemorije?: boolean };
 
 export function OperacijeTab({
   cesticaId,
@@ -43,15 +45,34 @@ export function OperacijeTab({
 
   useEffect(() => {
     let aktivno = true;
-    ucitajOperacije(cesticaId).then((r) => {
-      if (!aktivno) return;
-      setStanje(r.ok ? { status: 'ok', data: r.operacije } : { status: 'greska', poruka: r.poruka });
-      if (r.ok) onBroj?.(r.operacije.length);
-    });
+    ucitajOperacije(cesticaId)
+      .then((r) => {
+        if (!aktivno) return;
+        setStanje(r.ok ? { status: 'ok', data: r.operacije } : { status: 'greska', poruka: r.poruka });
+        if (r.ok) {
+          onBroj?.(r.operacije.length);
+          void spremiListu(cesticaId, r.operacije);
+        }
+      })
+      .catch(async () => {
+        // bez signala → zadnja učitana lista s ovog uređaja
+        const lista = await ucitajListu<Operacija>(cesticaId);
+        if (!aktivno) return;
+        setStanje(lista ? { status: 'ok', data: lista, izMemorije: true } : { status: 'greska', poruka: 'Bez signala — operacije ove čestice još nisu učitane na ovom uređaju.' });
+      });
     return () => {
       aktivno = false;
     };
   }, [cesticaId, verzija, onBroj]);
+
+  // Stavke ove čestice koje čekaju slanje; kad red splasne (poslano) → ponovo učitaj s poslužitelja
+  const red = useSyncExternalStore(pretplati, stanjeReda, () => []);
+  const naCekanju = red.filter((st) => st.cesticaId === cesticaId);
+  const prosli = useRef(naCekanju.length);
+  useEffect(() => {
+    if (naCekanju.length < prosli.current) setVerzija((v) => v + 1);
+    prosli.current = naCekanju.length;
+  }, [naCekanju.length]);
 
   const osvjezi = () => setVerzija((v) => v + 1);
 
@@ -78,15 +99,42 @@ export function OperacijeTab({
           {stanje.poruka}
         </p>
       )}
-      {stanje.status === 'ok' && stanje.data.length === 0 && <p className="text-sm text-zinc-600">Još nema upisanih operacija na ovoj čestici.</p>}
+      {naCekanju.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {naCekanju.map((st) => (
+            <NaCekanjuRed key={st.localId} st={st} />
+          ))}
+        </ul>
+      )}
+      {stanje.status === 'ok' && stanje.izMemorije && <p className="rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-700">Bez signala — prikazano zadnje učitano na ovom uređaju.</p>}
+      {stanje.status === 'ok' && stanje.data.length === 0 && naCekanju.length === 0 && <p className="text-sm text-zinc-600">Još nema upisanih operacija na ovoj čestici.</p>}
       {stanje.status === 'ok' && stanje.data.length > 0 && (
         <ul className="flex flex-col divide-y divide-zinc-100">
           {stanje.data.map((o) => (
-            <OperacijaRed key={o.id} o={o} smijeBrisati={smijeUpisivati} onObrisano={osvjezi} />
+            <OperacijaRed key={o.id} o={o} smijeBrisati={smijeUpisivati && !stanje.izMemorije} onObrisano={osvjezi} />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function NaCekanjuRed({ st }: { st: StavkaReda }) {
+  const tip = st.operacija.tip as TipOperacije;
+  const opis = opisOperacije({ ...(st.operacija as Parameters<typeof opisOperacije>[0]), tip, amount: st.operacija.amount === '' || st.operacija.amount == null ? null : Number(String(st.operacija.amount).replace(',', '.')) });
+  return (
+    <li className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm ${st.greska ? 'bg-red-50' : 'bg-amber-50'}`}>
+      <div className="min-w-0 flex-1">
+        <span className="font-semibold">{TIP_LABEL[tip] ?? tip}</span> <span className="text-xs text-zinc-600">{st.operacija.datum}</span>
+        {opis && <p>{opis}</p>}
+        <p className={`text-xs ${st.greska ? 'text-red-800' : 'text-amber-900'}`}>{st.greska ? `⚠ Nije spremljeno: ${st.greska}` : '⏳ Čeka signal — poslat će se sama'}</p>
+      </div>
+      {st.greska && (
+        <button type="button" onClick={() => void idbSpremiste.obrisi(st.localId)} className="min-h-11 flex-shrink-0 px-2 text-xs font-semibold text-red-800">
+          Ukloni
+        </button>
+      )}
+    </li>
   );
 }
 
@@ -118,9 +166,14 @@ function OperacijaRed({ o, smijeBrisati, onObrisano }: { o: Operacija; smijeBris
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const r = await obrisiOperaciju(o.id);
-                  if (r.ok) onObrisano();
-                  else setGreska(r.poruka);
+                  try {
+                    const r = await obrisiOperaciju(o.id);
+                    if (r.ok) onObrisano();
+                    else setGreska(r.poruka);
+                  } catch {
+                    setGreska('Brisanje traži internet — pokušaj kad bude signala.');
+                    setPotvrda(false);
+                  }
                 })
               }
               className="min-h-11 rounded-lg bg-red-600 px-3 text-sm font-semibold text-white disabled:opacity-60"
@@ -165,11 +218,24 @@ function OperacijaForma({
     const fd = new FormData(e.currentTarget);
     const v = (k: string) => String(fd.get(k) ?? '');
     const operacija = { tip, localId, datum: v('datum'), note: v('note'), kultura: v('kultura'), sorta: v('sorta'), fert: v('fert'), product: v('product'), amount: v('amount'), unit: v('unit'), vlaga: v('vlaga'), hektolitarska: v('hektolitarska'), dubina: v('dubina') };
-    startTransition(async () => {
-      const r = await dodajOperaciju({ cesticaId, gospodarstvoId, operacija });
-      if (!r.ok) return setGreska(r.poruka);
-      if (r.kulturaPromijenjena) router.refresh();
+    // ista validacija kao na poslužitelju — greška se vidi odmah, i bez signala
+    const provjera = NovaOperacijaSchema.safeParse(operacija);
+    if (!provjera.success) return setGreska(provjera.error.issues[0]?.message ?? 'Provjeri unos.');
+    const uRedCekanja = async () => {
+      await uRed({ localId, cesticaId, gospodarstvoId, operacija });
       onGotovo();
+    };
+    startTransition(async () => {
+      if (!navigator.onLine) return uRedCekanja();
+      try {
+        const r = await dodajOperaciju({ cesticaId, gospodarstvoId, operacija });
+        if (!r.ok) return setGreska(r.poruka);
+        if (r.kulturaPromijenjena) router.refresh();
+        onGotovo();
+      } catch (err) {
+        if (jeGreskaMreze(err)) return uRedCekanja();
+        setGreska('Spremanje nije uspjelo. Pokušaj ponovo.');
+      }
     });
   }
 

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
 import { odjava } from '@/features/auth/actions';
 import { Button } from '@/components/ui/button';
+import { SwRegistracija, SyncIndikator } from '@/components/SyncIndikator';
 
 // Lekcija #6: bez position:sticky — flex stupac, scroll samo na <main>
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           M-AGRO
         </Link>
         <div className="flex items-center gap-2">
+          <SyncIndikator />
           <span className="hidden max-w-48 truncate text-sm text-zinc-600 sm:inline">{user.email}</span>
           <form action={odjava}>
             <Button variant="ghost" type="submit" className="min-h-11 px-3">
@@ -26,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+      <SwRegistracija />
     </div>
   );
 }
