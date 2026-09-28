@@ -2,7 +2,7 @@ import 'server-only';
 import { UlogaSchema } from '@m-agro/domain';
 import { z } from 'zod';
 import { supabaseForRequest } from '../auth/supabase-server';
-import { DbError, type Cestica, type DbClient, type UvozIshod } from './types';
+import { DbError, type Cestica, type DbClient, type Operacija, type UvozIshod } from './types';
 import type { Json } from './database.types';
 
 const GeomSchema = z.object({
@@ -116,11 +116,84 @@ export const supabaseDb: DbClient = {
       if (count === 0) throw new DbError('cestice.update: nema pristupa ili zapis ne postoji', 'not_found');
     },
 
+    async postaviKulturu(id, kultura) {
+      const sb = await supabaseForRequest();
+      const { error } = await sb.from('cestice').update({ kultura }).eq('id', id);
+      if (error) fail('cestice.postaviKulturu', error);
+    },
+
     async remove(id) {
       const sb = await supabaseForRequest();
       const { error, count } = await sb.from('cestice').delete({ count: 'exact' }).eq('id', id);
       if (error) fail('cestice.remove', error);
       if (count === 0) throw new DbError('cestice.remove: nema pristupa ili zapis ne postoji', 'not_found');
+    },
+  },
+
+  operacije: {
+    async listByCestica(cesticaId) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb
+        .from('operacije')
+        .select('id, cestica_id, tip, datum, kultura, sorta, fert, product, amount, unit, vlaga, hektolitarska, dubina, note, created_at')
+        .eq('cestica_id', cesticaId)
+        .order('datum', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) fail('operacije.listByCestica', error);
+      const n = (v: number | null) => (v === null ? null : Number(v));
+      return data.map(
+        (o): Operacija => ({
+          id: o.id,
+          cesticaId: o.cestica_id,
+          tip: o.tip,
+          datum: o.datum,
+          kultura: o.kultura,
+          sorta: o.sorta,
+          fert: o.fert,
+          product: o.product,
+          amount: n(o.amount),
+          unit: o.unit,
+          vlaga: n(o.vlaga),
+          hektolitarska: n(o.hektolitarska),
+          dubina: n(o.dubina),
+          note: o.note,
+          createdAt: o.created_at,
+        }),
+      );
+    },
+
+    async create(cesticaId, o) {
+      const sb = await supabaseForRequest();
+      // eksplicitno po vrsti — polja druge vrste ne mogu "procuriti" u red
+      const red = {
+        cestica_id: cesticaId,
+        tip: o.tip,
+        datum: o.datum,
+        note: o.note,
+        local_id: o.localId,
+        ...(o.tip === 'sjetva' && { kultura: o.kultura, sorta: o.sorta, amount: o.amount, unit: o.unit, dubina: o.dubina }),
+        ...(o.tip === 'prihrana' && { fert: o.fert, amount: o.amount, unit: o.unit }),
+        ...(o.tip === 'zastita' && { product: o.product, amount: o.amount, unit: o.unit }),
+        ...(o.tip === 'zetva' && { kultura: o.kultura, amount: o.amount, unit: o.unit, vlaga: o.vlaga, hektolitarska: o.hektolitarska }),
+        ...(o.tip === 'obrada' && { product: o.product, dubina: o.dubina }),
+      };
+      const { data, error } = await sb.from('operacije').insert(red).select('id').single();
+      if (error?.code === '23505') {
+        // isti localId već spremljen (dvostruki klik / ponovljeni sync) → vrati postojeći
+        const { data: postojeci, error: e2 } = await sb.from('operacije').select('id').eq('cestica_id', cesticaId).eq('local_id', o.localId).single();
+        if (e2) fail('operacije.create(dup)', e2);
+        return { id: postojeci.id };
+      }
+      if (error) fail('operacije.create', error);
+      return { id: data.id };
+    },
+
+    async remove(id) {
+      const sb = await supabaseForRequest();
+      const { error, count } = await sb.from('operacije').delete({ count: 'exact' }).eq('id', id);
+      if (error) fail('operacije.remove', error);
+      if (count === 0) throw new DbError('operacije.remove: nema pristupa ili zapis ne postoji', 'not_found');
     },
   },
 

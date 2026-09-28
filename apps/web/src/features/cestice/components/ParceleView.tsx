@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { Cestica } from '@/lib/db';
 import { ListaCestica } from './ListaCestica';
 import { UrediCesticu } from './UrediCesticu';
-import { NdviPanel } from '@/features/ndvi/components/NdviPanel';
+import { CesticaPanel } from './CesticaPanel';
 import { useMapStore } from '@/stores/mapStore';
 
 // MapLibre (~800 KB) samo u browseru — ne ulazi u Worker bundle (ADR-0001, limit 3 MiB)
@@ -74,7 +74,15 @@ export function ParceleView({
                 onZatvori={() => setUredjujeId(null)}
               />
             ) : (
-              <NdviPanel key={odabrana.id} cestica={odabrana} {...(smijeUredjivati && { onUredi: () => setUredjujeId(odabrana.id) })} />
+              <div className="max-h-[55vh] overflow-y-auto rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-zinc-200 backdrop-blur md:max-h-[70vh]">
+                <CesticaPanel
+                  key={odabrana.id}
+                  cestica={odabrana}
+                  gospodarstvoId={gospodarstvoId}
+                  smijeUredjivati={smijeUredjivati}
+                  {...(smijeUredjivati && { onUredi: () => setUredjujeId(odabrana.id) })}
+                />
+              </div>
             )}
           </div>
         )}

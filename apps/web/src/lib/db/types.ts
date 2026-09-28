@@ -1,4 +1,4 @@
-import type { RawMultiPolygon, Uloga, UvozCesticaDto, UvozMod } from '@m-agro/domain';
+import type { NovaOperacija, RawMultiPolygon, TipOperacije, Uloga, UvozCesticaDto, UvozMod } from '@m-agro/domain';
 
 /**
  * DbClient (01_ARHITEKTURA_v2.md). Feature kod vidi SAMO ovo sučelje.
@@ -51,13 +51,43 @@ export interface CesticeRepo {
   uvezi(gospodarstvoId: string, cestice: UvozCesticaDto[], mod: UvozMod): Promise<UvozIshod>;
   /** Naziv/kultura. RLS: član+. 0 izmijenjenih redaka → DbError 'not_found'. */
   update(id: string, patch: { naziv: string; kultura: string | null }): Promise<void>;
+  /** Samo kultura (npr. nakon upisa sjetve). RLS: član+. */
+  postaviKulturu(id: string, kultura: string): Promise<void>;
   /** RLS: samo vlasnik. Kaskadno briše operacije; audit trigger bilježi brisanje. */
+  remove(id: string): Promise<void>;
+}
+
+export interface Operacija {
+  id: string;
+  cesticaId: string;
+  tip: TipOperacije;
+  datum: string;
+  kultura: string | null;
+  sorta: string | null;
+  fert: string | null;
+  product: string | null;
+  amount: number | null;
+  unit: string | null;
+  vlaga: number | null;
+  hektolitarska: number | null;
+  dubina: number | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface OperacijeRepo {
+  /** Najnovije prve. RLS: čitanje+. */
+  listByCestica(cesticaId: string): Promise<Operacija[]>;
+  /** RLS: član+. Isti localId na istoj čestici = ista operacija (idempotentno, bez duplikata). */
+  create(cesticaId: string, o: NovaOperacija): Promise<{ id: string }>;
+  /** RLS: član+. 0 obrisanih → DbError 'not_found'. */
   remove(id: string): Promise<void>;
 }
 
 export interface DbClient {
   gospodarstva: GospodarstvaRepo;
   cestice: CesticeRepo;
+  operacije: OperacijeRepo;
   /** Za /api/health — jeftin upit koji dokazuje da je baza dostupna. */
   ping(): Promise<boolean>;
 }

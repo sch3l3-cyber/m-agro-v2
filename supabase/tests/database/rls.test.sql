@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(28);
+select plan(31);
 
 -- ---------------------------------------------------------------- fixture
 insert into auth.users (id, email) values
@@ -146,6 +146,20 @@ select pg_temp.login('00000000-0000-0000-0000-00000000000a');
 update cestice set naziv = 'Ciglana istok', kultura = 'Pšenica' where id = '20000000-0000-0000-0000-00000000000a';
 select is((select naziv || '/' || kultura from cestice where id = '20000000-0000-0000-0000-00000000000a'), 'Ciglana istok/Pšenica',
   'Vlasnik mijenja naziv i kulturu čestice');
+
+-- ---------------------------------------------------------------- operacije (Faza 3)
+select lives_ok(
+  $$ insert into operacije (cestica_id, tip, datum, fert, amount, unit, local_id)
+     values ('20000000-0000-0000-0000-00000000000a', 'prihrana', '2026-03-01', 'KAN', 200, 'kg/ha', 'test-local-1') $$,
+  'Vlasnik upisuje operaciju (created_by = on sam, zadano)');
+select throws_ok(
+  $$ insert into operacije (cestica_id, tip, datum, created_by)
+     values ('20000000-0000-0000-0000-00000000000a', 'ostalo', '2026-03-02', '00000000-0000-0000-0000-00000000000b') $$,
+  '42501', null, 'Operacija se ne može upisati u tuđe ime (created_by)');
+select throws_ok(
+  $$ insert into operacije (cestica_id, tip, datum, local_id)
+     values ('20000000-0000-0000-0000-00000000000a', 'prihrana', '2026-03-01', 'test-local-1') $$,
+  '23505', null, 'Isti local_id na istoj čestici = duplikat (idempotentni upis)');
 
 -- ---------------------------------------------------------------- brisanje gospodarstva (kaskada + guard)
 select pg_temp.login('00000000-0000-0000-0000-00000000000a');
