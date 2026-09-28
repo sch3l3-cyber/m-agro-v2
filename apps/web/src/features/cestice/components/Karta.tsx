@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useCallback, useEffect, useRef } from 'react';
 import { addProtocol, GeolocateControl, Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import type { Cestica } from '@/lib/db';
-import { useMapStore } from '@/stores/mapStore';
+import { useMapStore, type Overlay } from '@/stores/mapStore';
 import { bojaCestice } from '../boje';
 import { version as MAPLIBRE_VERZIJA } from 'maplibre-gl/package.json';
 
@@ -57,6 +57,28 @@ function granice(cestice: Cestica[]): LngLatBoundsLike | null {
           if (y > maxY) maxY = y;
         }
   return minX > maxX ? null : [minX, minY, maxX, maxY];
+}
+
+/** Snimka (NDVI ili VRA zone, blob: PNG) preko čestice — ispod obruba, iznad satelita. */
+function primijeniOverlay(map: MlMap, o: Overlay | null) {
+  if (map.getLayer('ndvi-sloj')) map.removeLayer('ndvi-sloj');
+  if (map.getSource('ndvi')) map.removeSource('ndvi');
+  // odabrana čestica bez ispune dok se prikazuje snimka (da boja ne prekrije snimku)
+  map.setPaintProperty('cestice-fill', 'fill-opacity', ['case', ['boolean', ['feature-state', 'odabrana'], false], o ? 0 : 0.55, 0.35]);
+  if (!o) return;
+  const [w, s, e, n] = o.bbox;
+  map.addSource('ndvi', {
+    type: 'image',
+    url: o.url,
+    coordinates: [
+      [w, n],
+      [e, n],
+      [e, s],
+      [w, s],
+    ],
+  });
+  // 'nearest' — prikaz stvarnih 10 m piksela, bez lažnog zaglađivanja
+  map.addLayer({ id: 'ndvi-sloj', type: 'raster', source: 'ndvi', paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.95 } }, 'cestice-obrub');
 }
 
 function uFeatureCollection(cestice: Cestica[]): GeoJSON.FeatureCollection {
@@ -127,6 +149,15 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
       map.on('mouseenter', 'cestice-fill', () => (map.getCanvas().style.cursor = 'pointer'));
       map.on('mouseleave', 'cestice-fill', () => (map.getCanvas().style.cursor = ''));
       postaviPodatke(map, zadnjeCestice.current);
+      // Odabir/snimka mogli su stići PRIJE nego je karta bila spremna (brz klik nakon otvaranja) → preuzmi stanje
+      const st = useMapStore.getState();
+      const fid = st.odabranaId ? idPoCid.current.get(st.odabranaId) : undefined;
+      if (fid !== undefined) {
+        map.setFeatureState({ source: 'cestice', id: fid }, { odabrana: true });
+        prethodna.current = fid;
+        if (st.izvor === 'lista') prikaziCesticuRef.current?.(map, st.odabranaId, 0);
+      }
+      primijeniOverlay(map, st.overlay);
     });
 
     return () => {
@@ -167,6 +198,9 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
     },
     [cestice],
   );
+
+  const prikaziCesticuRef = useRef(prikaziCesticu);
+  prikaziCesticuRef.current = prikaziCesticu;
 
   // Kontejner mijenja veličinu bez window resize (mobilni tab Karta/Lista, desni stupac) → map.resize()
   // Ako je karta bila skrivena (mobilni tab Lista) dok je čestica odabrana, zumiraj kad postane vidljiva.
@@ -221,30 +255,7 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
         if (st.overlay === prev.overlay) return;
         const map = mapRef.current;
         if (!map || !map.getSource('cestice')) return;
-        const o = st.overlay;
-        if (map.getLayer('ndvi-sloj')) map.removeLayer('ndvi-sloj');
-        if (map.getSource('ndvi')) map.removeSource('ndvi');
-        // odabrana čestica bez ispune dok se prikazuje snimka (da boja ne prekrije NDVI)
-        map.setPaintProperty('cestice-fill', 'fill-opacity', [
-          'case',
-          ['boolean', ['feature-state', 'odabrana'], false],
-          o ? 0 : 0.55,
-          0.35,
-        ]);
-        if (!o) return;
-        const [w, s, e, n] = o.bbox;
-        map.addSource('ndvi', {
-          type: 'image',
-          url: o.url,
-          coordinates: [
-            [w, n],
-            [e, n],
-            [e, s],
-            [w, s],
-          ],
-        });
-        // 'nearest' — prikaz stvarnih 10 m piksela, bez lažnog zaglađivanja
-        map.addLayer({ id: 'ndvi-sloj', type: 'raster', source: 'ndvi', paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.95 } }, 'cestice-obrub');
+        primijeniOverlay(map, st.overlay);
       }),
     [],
   );
