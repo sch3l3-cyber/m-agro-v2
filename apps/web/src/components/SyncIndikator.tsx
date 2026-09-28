@@ -72,6 +72,24 @@ export function SyncIndikator() {
 
 /** Registracija service workera (samo produkcija — u dev modu bi cacheirao vruće module). */
 export function SwRegistracija() {
+  // Nakon deploya stara otvorena stranica zove server akcije koje više ne postoje
+  // (UnrecognizedActionError) → jednom osvježi stranicu da dobije novu verziju.
+  useEffect(() => {
+    const h = (e: PromiseRejectionEvent) => {
+      const r = e.reason as { name?: string; message?: string } | undefined;
+      if (r?.name !== 'UnrecognizedActionError' && !r?.message?.includes('was not found on the server')) return;
+      try {
+        const zadnje = Number(sessionStorage.getItem('m-agro-reload') ?? 0);
+        if (Date.now() - zadnje < 60_000) return;
+        sessionStorage.setItem('m-agro-reload', String(Date.now()));
+      } catch {
+        /* bez sessionStorage — ipak osvježi */
+      }
+      location.reload();
+    };
+    window.addEventListener('unhandledrejection', h);
+    return () => window.removeEventListener('unhandledrejection', h);
+  }, []);
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) return;
     navigator.serviceWorker.register('/sw.js').catch((err) => console.error('[sw] registracija', err));

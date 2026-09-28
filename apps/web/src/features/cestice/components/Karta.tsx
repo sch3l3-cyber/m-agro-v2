@@ -95,6 +95,7 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new GeolocateControl({ trackUserLocation: true }), 'top-right');
     mapRef.current = map;
+    (window as unknown as { __mAgroMapa?: MlMap }).__mAgroMapa = map; // dijagnostika u konzoli
 
     map.on('load', () => {
       map.addSource('cestice', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });

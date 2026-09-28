@@ -61,3 +61,6 @@ export const useMapStore = create<MapState>()((set, get) => ({
   /** NDVI tab (zadržano ime radi postojećeg koda) */
   postaviOverlay: (o) => get().postaviSloj('ndvi', o),
 }));
+
+// Dijagnostika u konzoli preglednika (samo čitanje stanja): __mAgroKarta.getState()
+if (typeof window !== 'undefined') (window as unknown as { __mAgroKarta: typeof useMapStore }).__mAgroKarta = useMapStore;
