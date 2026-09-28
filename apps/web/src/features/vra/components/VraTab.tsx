@@ -7,6 +7,7 @@ import { dohvatiSliku, dohvatiTrend, SentinelKlijentGreska } from '@/lib/sentine
 import { jeGreskaMreze, uRed } from '@/lib/offline/red';
 import { useMapStore } from '@/stores/mapStore';
 import { dodajOperaciju } from '@/features/operacije/actions';
+import { PrognozaPrihrane } from './PrognozaPrihrane';
 
 const fmtDan = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'short' });
 const n1 = (x: number) => x.toLocaleString('hr-HR', { maximumFractionDigits: 1 });
@@ -223,6 +224,8 @@ export function VraTab({ cestica, gospodarstvoId, smijeUpisivati }: { cestica: C
           </select>
         </label>
       </div>
+
+      <PrognozaPrihrane lat={(bbox[1] + bbox[3]) / 2} lon={(bbox[0] + bbox[2]) / 2} gnojivo={gnojivo} />
 
       {/* Rezultat */}
       {rs?.status === 'ucitavam' && <p className="text-sm text-zinc-500">Računam zone iz satelitske snimke…</p>}
