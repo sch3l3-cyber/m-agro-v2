@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Cestica } from '@/lib/db';
-import { dohvatiSliku, dohvatiSnimke, dohvatiStats, SentinelKlijentGreska, type Sloj, type Snimka, type StatsIshod } from '@/lib/sentinel/client';
+import { dohvatiSliku, dohvatiSnimke, dohvatiStats, dohvatiTrend, SentinelKlijentGreska, type Sloj, type Snimka, type StatsIshod, type TrendTocka } from '@/lib/sentinel/client';
 import { useMapStore } from '@/stores/mapStore';
 import { KONTRAST_LEGENDA, NDVI_RAZREDI, razred } from '../kategorije';
+import { TrendGraf } from './TrendGraf';
 
 const SLOJ_LABEL: Record<Sloj, string> = { ndvi: 'NDVI', kontrast: 'Kontrast', prave_boje: 'Prave boje' };
 const fmtDatum = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'short' });
@@ -40,6 +41,18 @@ export function NdviPanel({ cestica, onUredi }: { cestica: Cestica; onUredi?: ()
   // zadani datum: prvi s razumnom oblačnošću scene; inače najnoviji
   const datum =
     odabraniDatum ?? (snimke.status === 'ok' ? ((snimke.data.find((x) => (x.oblacnost ?? 0) <= 40) ?? snimke.data[0])?.datum ?? null) : null);
+
+  // 0) trend kroz sezonu — neovisno o odabranom datumu
+  const [trend, setTrend] = useState<Stanje<TrendTocka[]>>({ status: 'ucitavam' });
+  useEffect(() => {
+    let aktivno = true;
+    dohvatiTrend(cestica.id)
+      .then((d) => aktivno && setTrend({ status: 'ok', data: d }))
+      .catch((e) => aktivno && setTrend({ status: 'greska', poruka: poruka(e) }));
+    return () => {
+      aktivno = false;
+    };
+  }, [cestica.id]);
 
   // 1) dostupni datumi
   useEffect(() => {
@@ -165,6 +178,14 @@ export function NdviPanel({ cestica, onUredi }: { cestica: Cestica; onUredi?: ()
       {slikaStanje?.status === 'greska' && <p role="alert" className="text-xs text-red-700">Snimka: {slikaStanje.poruka}</p>}
 
       {imaPiksela && <Legenda sloj={sloj} />}
+
+      {/* Kroz sezonu */}
+      <section className="border-t border-zinc-200 pt-2" aria-label="NDVI kroz sezonu">
+        <p className="mb-1 text-sm font-semibold">Kroz sezonu</p>
+        {trend.status === 'ucitavam' && <p className="text-xs text-zinc-500">Računam NDVI za sve snimke… (prvi put do pola minute)</p>}
+        {trend.status === 'greska' && <p role="alert" className="text-xs text-red-700">{trend.poruka}</p>}
+        {trend.status === 'ok' && trend.data.length > 0 && <TrendGraf tocke={trend.data} odabrani={datum} onOdaberi={setDatum} />}
+      </section>
     </div>
   );
 }

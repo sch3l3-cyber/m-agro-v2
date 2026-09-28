@@ -5,6 +5,7 @@ import { getAccessToken } from '../auth/browser';
 import { publicEnv } from '../env';
 
 /** Klijent za m-agro-v2-sentinel worker. Lekcija #14: timeout + jasna greška, nikad vječni spinner. */
+
 /** Povećaj kad se promijeni izračun statistike u sentinel workeru. */
 const STATS_VERZIJA = 2;
 
@@ -33,6 +34,11 @@ const StatsSchema = z.discriminatedUnion('status', [
 ]);
 export type StatsIshod = z.infer<typeof StatsSchema>;
 
+const TrendSchema = z.object({
+  tocke: z.array(z.object({ datum: z.string(), oblacnostScene: z.number().nullable() }).and(StatsSchema)),
+});
+export type TrendTocka = z.infer<typeof TrendSchema>['tocke'][number];
+
 export class SentinelKlijentGreska extends Error {
   constructor(
     message: string,
@@ -54,7 +60,7 @@ async function poziv(path: string, timeoutMs = 30_000): Promise<Response> {
     });
   } catch (err) {
     const timeout = err instanceof DOMException && err.name === 'TimeoutError';
-    throw new SentinelKlijentGreska(timeout ? 'Satelitski servis ne odgovara (30 s).' : 'Nema veze s poslužiteljem.', 0);
+    throw new SentinelKlijentGreska(timeout ? `Satelitski servis ne odgovara (${timeoutMs / 1000} s).` : 'Nema veze s poslužiteljem.', 0);
   }
   if (!r.ok) {
     const body = (await r.json().catch(() => null)) as { poruka?: string } | null;
@@ -78,4 +84,10 @@ export async function dohvatiStats(cesticaId: string, datum: string): Promise<St
 export async function dohvatiSliku(cesticaId: string, datum: string, sloj: Sloj): Promise<string> {
   const r = await poziv(`/slika?cestica=${cesticaId}&datum=${datum}&sloj=${sloj}`, 45_000);
   return URL.createObjectURL(await r.blob());
+}
+
+/** NDVI kroz sezonu (svi datumi iz kataloga). Prvi put za česticu može trajati duže — jedan veliki Sentinel poziv. */
+export async function dohvatiTrend(cesticaId: string): Promise<TrendTocka[]> {
+  const r = await poziv(`/trend?cestica=${cesticaId}&v=${STATS_VERZIJA}`, 60_000);
+  return TrendSchema.parse(await r.json()).tocke;
 }

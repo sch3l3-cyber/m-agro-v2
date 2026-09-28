@@ -205,3 +205,60 @@ describe('CORS', () => {
     expect(r.headers.get('access-control-allow-headers')).toContain('authorization');
   });
 });
+
+describe('trend kroz sezonu', () => {
+  const statsInt = (datum: string, mean: number) => ({
+    interval: { from: `${datum}T00:00:00Z`, to: 'x' },
+    outputs: { ndvi: { bands: { B0: { stats: { min: 0.1, max: 0.9, mean, stDev: 0.1, sampleCount: 1000, noDataCount: 0, percentiles: { '10.0': mean - 0.1, '90.0': mean + 0.1 } } } } } },
+  });
+
+  it('cache djelomičan → JEDAN Sentinel poziv samo za raspon koji fali, skupni upis s istim ključevima', async () => {
+    let statsBody = '';
+    mockFetch((u, init) => {
+      if (u.includes('/rest/v1/cestice')) return J([{ id: CID, geom_hash: 'h1', geom_arkod: GEOM }]);
+      if (u.includes('openid-connect/token')) return J({ access_token: 't', expires_in: 600 });
+      if (u.includes('/catalog/')) {
+        return J({ features: ['2026-06-01', '2026-06-06', '2026-06-11'].map((d) => ({ properties: { datetime: `${d}T09:50:00Z`, 'eo:cloud_cover': 3 } })) });
+      }
+      if (u.includes('/rest/v1/ndvi_cache') && init?.method === 'POST') return new Response(null, { status: 201 });
+      if (u.includes('/rest/v1/ndvi_cache')) {
+        return J([{ datum: '2026-06-01', status: 'ok', mean: 0.5, min: 0.4, max: 0.6, stdev: 0.02, percentiles: {}, sample_count: 900, cloud_pct: 0 }]);
+      }
+      if (u.includes('/api/v1/statistics')) {
+        statsBody = String(init?.body);
+        return J({ data: [statsInt('2026-06-06', 0.6), { interval: { from: '2026-06-11T00:00:00Z', to: 'x' }, outputs: { ndvi: { bands: { B0: { stats: { min: 0, max: 0, mean: 0, stDev: 0, sampleCount: 1000, noDataCount: 1000 } } } } } }] });
+      }
+      return undefined;
+    });
+    const r = await call(`/trend?cestica=${CID}`, auth);
+    const body = (await r.json()) as { tocke: { datum: string; status: string; oblacnostScene: number }[] };
+    expect(body.tocke.map((t) => [t.datum, t.status])).toEqual([
+      ['2026-06-01', 'ok'],
+      ['2026-06-06', 'ok'],
+      ['2026-06-11', 'oblacno'],
+    ]);
+    expect(body.tocke[0]?.oblacnostScene).toBe(3);
+    expect(pozivi.filter((p) => p.url.includes('/api/v1/statistics'))).toHaveLength(1);
+    expect(JSON.parse(statsBody).aggregation.timeRange).toEqual({ from: '2026-06-06T00:00:00Z', to: '2026-06-12T00:00:00Z' });
+    expect(statsBody).not.toMatch(/resx|resy/);
+    await Promise.all(waitUntil);
+    const upis = pozivi.find((p) => p.init?.method === 'POST' && p.url.includes('ndvi_cache'));
+    const redovi = JSON.parse(String(upis?.init?.body)) as Record<string, unknown>[];
+    expect(redovi).toHaveLength(2);
+    expect(new Set(redovi.map((x) => Object.keys(x).sort().join(','))).size).toBe(1);
+    expect((upis?.init?.headers as Record<string, string>).apikey).toBe('secret');
+  });
+
+  it('sve u cacheu → nula Sentinel statistika poziva', async () => {
+    mockFetch((u) => {
+      if (u.includes('/rest/v1/cestice')) return J([{ id: CID, geom_hash: 'h1', geom_arkod: GEOM }]);
+      if (u.includes('openid-connect/token')) return J({ access_token: 't', expires_in: 600 });
+      if (u.includes('/catalog/')) return J({ features: [{ properties: { datetime: '2026-06-01T09:50:00Z', 'eo:cloud_cover': 1 } }] });
+      if (u.includes('/rest/v1/ndvi_cache')) return J([{ datum: '2026-06-01', status: 'ok', mean: 0.5, min: 0.4, max: 0.6, stdev: 0.02, percentiles: {}, sample_count: 900, cloud_pct: 0 }]);
+      return undefined;
+    });
+    const r = await call(`/trend?cestica=${CID}`, auth);
+    expect(r.status).toBe(200);
+    expect(pozivi.some((p) => p.url.includes('/api/v1/statistics'))).toBe(false);
+  });
+});

@@ -135,8 +135,13 @@ export interface StatsAggregation {
 }
 
 export function statsZahtjev(g: Geometrija, datum: string) {
+  return statsRasponZahtjev(g, dan(datum));
+}
+
+/** Jedan zahtjev za više dana: P1D intervali od `from` do `to` (isključivo). */
+export function statsRasponZahtjev(g: Geometrija, timeRange: { from: string; to: string }) {
   const aggregation: StatsAggregation = {
-    timeRange: dan(datum),
+    timeRange,
     aggregationInterval: { of: 'P1D' },
     lastIntervalBehavior: 'SHORTEN',
     evalscript: STATS_EVALSCRIPT,
@@ -162,8 +167,11 @@ export interface NdviStats {
 
 export type StatsIshod = { status: 'ok'; stats: NdviStats } | { status: 'oblacno'; oblacnostPct: number } | { status: 'nema_snimke' };
 
+type StatsInterval = NonNullable<StatsOdgovor['data']>[number];
+
 interface StatsOdgovor {
   data?: {
+    interval?: { from: string; to: string };
     error?: { type?: string; message?: string };
     outputs?: {
       ndvi?: {
@@ -185,6 +193,10 @@ interface StatsOdgovor {
 export function parsirajStats(d: StatsOdgovor, udio = 1): StatsIshod {
   const interval = d.data?.[0];
   if (interval?.error) throw new SentinelError(`Sentinel nije izračunao statistiku: ${interval.error.message ?? interval.error.type ?? 'nepoznato'}`, 502);
+  return parsirajInterval(interval, udio);
+}
+
+function parsirajInterval(interval: StatsInterval | undefined, udio: number): StatsIshod {
   const s = interval?.outputs?.ndvi?.bands?.B0?.stats;
   if (!s || s.sampleCount === 0) return { status: 'nema_snimke' };
   const cisti = s.sampleCount - s.noDataCount;
@@ -205,6 +217,24 @@ export function parsirajStats(d: StatsOdgovor, udio = 1): StatsIshod {
   };
 }
 
+/**
+ * Niz intervala (P1D kroz sezonu) → ishod po datumu. Intervali s greškom se preskaču
+ * (logiraju), da jedan loš dan ne sruši cijeli trend.
+ */
+export function parsirajNiz(d: StatsOdgovor, udio = 1): Map<string, StatsIshod> {
+  const out = new Map<string, StatsIshod>();
+  for (const it of d.data ?? []) {
+    const datum = it.interval?.from.slice(0, 10);
+    if (!datum) continue;
+    if (it.error) {
+      console.warn('[trend] interval s greškom', datum, it.error.message ?? it.error.type);
+      continue;
+    }
+    out.set(datum, parsirajInterval(it, udio));
+  }
+  return out;
+}
+
 export async function statistike(tok: string, g: Geometrija, datum: string): Promise<StatsIshod> {
   const r = await fetch(`${API}/statistics`, {
     method: 'POST',
@@ -215,6 +245,17 @@ export async function statistike(tok: string, g: Geometrija, datum: string): Pro
   const odg = (await r.json()) as StatsOdgovor;
   if (!odg.data?.length) console.warn('[stats] prazan odgovor', datum, JSON.stringify(odg).slice(0, 500));
   return parsirajStats(odg, udioUBboxu(g));
+}
+
+/** Trend: statistike za sve dane u rasponu [od, do] (datumi YYYY-MM-DD, uključivo) jednim pozivom. */
+export async function statistikeRaspon(tok: string, g: Geometrija, od: string, doDatum: string): Promise<Map<string, StatsIshod>> {
+  const r = await fetch(`${API}/statistics`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${tok}`, 'content-type': 'application/json' },
+    body: JSON.stringify(statsRasponZahtjev(g, { from: dan(od).from, to: dan(doDatum).to })),
+  });
+  if (!r.ok) throw new SentinelError(`Statistika nedostupna (${r.status})`, 502);
+  return parsirajNiz((await r.json()) as StatsOdgovor, udioUBboxu(g));
 }
 
 // ---------------------------------------------------------------- slika

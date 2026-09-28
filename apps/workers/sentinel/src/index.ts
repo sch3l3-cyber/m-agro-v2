@@ -5,6 +5,7 @@
  *   GET /datumi?cestica=<uuid>                       dostupne snimke (zadnjih 150 dana)
  *   GET /stats?cestica=<uuid>&datum=YYYY-MM-DD        NDVI statistike (dijeljeni cache u Postgresu)
  *   GET /slika?cestica=<uuid>&datum=…&sloj=ndvi|kontrast|prave_boje   PNG (dijeljeni Cache API)
+ *   GET /trend?cestica=<uuid>                        NDVI kroz sezonu (jedan Sentinel poziv za sve što nije u cacheu)
  *
  * Svi osim /health traže `Authorization: Bearer <Supabase JWT>`. Čestica se čita iz baze s tim
  * JWT-om, pa RLS jamči da korisnik vidi snimke samo svojih čestica.
@@ -12,8 +13,8 @@
  */
 import { z } from 'zod';
 import { evalscriptZaSloj, kontrastEvalscript, SLOJEVI } from './evalscripts';
-import { citajCache, dohvatiCesticu, korisnikIzJwt, NemaPristupa, pisiCache, type SupabaseEnv } from './lib/supabase';
-import { dostupniDatumi, getToken, SentinelError, slika, statistike, type StatsIshod } from './lib/sentinel';
+import { citajCache, citajCacheRaspon, dohvatiCesticu, korisnikIzJwt, NemaPristupa, pisiCache, pisiCacheVise, type SupabaseEnv } from './lib/supabase';
+import { dostupniDatumi, getToken, SentinelError, slika, statistike, statistikeRaspon, type Snimka, type StatsIshod } from './lib/sentinel';
 
 export interface Env extends SupabaseEnv {
   ALLOWED_ORIGINS: string;
@@ -71,6 +72,18 @@ async function statsSaCacheom(env: Env, jwt: string, geomHash: string, geom: Par
   return { ishod, izCachea: false };
 }
 
+/** Dostupni datumi (katalog), dijeljeni Cache API 6 h po geom_hash. null = rate limit. */
+async function datumi(env: Env, jwt: string, geomHash: string, geom: Parameters<typeof statistike>[1], ctx: ExecutionContext): Promise<Snimka[] | null> {
+  const kljuc = new Request(`https://cache.m-agro.internal/datumi/${geomHash}`);
+  const hit = await caches.default.match(kljuc);
+  if (hit) return ((await hit.json()) as { snimke: Snimka[] }).snimke;
+  if (!(await smijeSentinel(env, jwt))) return null;
+  const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
+  const snimke = await dostupniDatumi(tok, geom);
+  ctx.waitUntil(caches.default.put(kljuc, json({ snimke }, 200, {}, 'public, max-age=21600')));
+  return snimke;
+}
+
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
@@ -90,15 +103,34 @@ export default {
       const c = await dohvatiCesticu(env, jwt, cid.data);
 
       if (url.pathname === '/datumi') {
-        const kljuc = new Request(`https://cache.m-agro.internal/datumi/${c.geomHash}`);
-        const hit = await caches.default.match(kljuc);
-        if (hit) return new Response(hit.body, { headers: { ...Object.fromEntries(hit.headers), ...cors } });
-        if (!(await smijeSentinel(env, jwt))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
-        const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
-        const snimke = await dostupniDatumi(tok, c.geom);
-        const res = json({ snimke }, 200, {}, 'public, max-age=21600'); // 6 h — novi prelet je svakih 2–5 dana
-        ctx.waitUntil(caches.default.put(kljuc, res.clone()));
-        return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
+        const snimke = await datumi(env, jwt, c.geomHash, c.geom, ctx);
+        if (!snimke) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+        return json({ snimke }, 200, cors, 'public, max-age=21600'); // 6 h — novi prelet je svakih 2–5 dana
+      }
+
+      if (url.pathname === '/trend') {
+        // Svi datumi iz kataloga: ono što nema u cacheu dohvaća se JEDNIM Statistical API pozivom (P1D kroz raspon)
+        const snimke = await datumi(env, jwt, c.geomHash, c.geom, ctx);
+        if (!snimke) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+        const svi = snimke.map((s) => s.datum).sort();
+        const tocke = new Map<string, StatsIshod>();
+        if (svi.length) {
+          const od = svi[0] as string;
+          const doD = svi[svi.length - 1] as string;
+          for (const [d, i] of await citajCacheRaspon(env, jwt, c.geomHash, od, doD)) tocke.set(d, i);
+          const fale = svi.filter((d) => !tocke.has(d));
+          if (fale.length) {
+            if (!(await smijeSentinel(env, jwt))) return greska(429, 'limit', 'Previše zahtjeva — pričekaj minutu', cors);
+            const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
+            const novo = await statistikeRaspon(tok, c.geom, fale[0] as string, fale[fale.length - 1] as string);
+            const zaUpis = new Map([...novo].filter(([d]) => fale.includes(d)));
+            for (const [d, i] of zaUpis) tocke.set(d, i);
+            ctx.waitUntil(pisiCacheVise(env, c.geomHash, zaUpis));
+          }
+        }
+        const oblak = new Map(snimke.map((s) => [s.datum, s.oblacnost]));
+        const niz = svi.map((d) => ({ datum: d, oblacnostScene: oblak.get(d) ?? null, ...(tocke.get(d) ?? { status: 'nema_snimke' as const }) }));
+        return json({ tocke: niz }, 200, cors, 'private, max-age=3600');
       }
 
       const datum = Datum.safeParse(url.searchParams.get('datum'));

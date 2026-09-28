@@ -95,6 +95,38 @@ export async function pisiCache(env: SupabaseEnv, geomHash: string, datum: strin
   if (!r.ok) console.error('[ndvi_cache] upis nije uspio', r.status, (await r.text()).slice(0, 200));
 }
 
+/** Svi datumi iz cachea u rasponu (uključivo). 'nema_snimke' se preskače — vidi citajCache. */
+export async function citajCacheRaspon(env: SupabaseEnv, jwt: string, geomHash: string, od: string, doDatum: string): Promise<Map<string, StatsIshod>> {
+  const url = `${env.SUPABASE_URL}/rest/v1/ndvi_cache?geom_hash=eq.${geomHash}&datum=gte.${od}&datum=lte.${doDatum}&status=neq.nema_snimke&select=datum,status,mean,min,max,stdev,percentiles,sample_count,cloud_pct`;
+  const r = await fetch(url, { headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, authorization: `Bearer ${jwt}` } });
+  const out = new Map<string, StatsIshod>();
+  if (!r.ok) return out;
+  for (const row of (await r.json()) as (CacheRed & { datum: string })[]) out.set(row.datum, izCachea(row));
+  return out;
+}
+
+/** Skupni upis (jedan HTTP poziv). PostgREST traži iste ključeve u svim redovima → nedostajući = null. */
+export async function pisiCacheVise(env: SupabaseEnv, geomHash: string, ishodi: Map<string, StatsIshod>): Promise<void> {
+  const KLJUCEVI = ['geom_hash', 'datum', 'status', 'mean', 'min', 'max', 'stdev', 'percentiles', 'sample_count', 'cloud_pct'];
+  const redovi = [...ishodi]
+    .filter(([, i]) => i.status !== 'nema_snimke')
+    .map(([datum, i]) => {
+      const r = uCache(geomHash, datum, i);
+      return Object.fromEntries(KLJUCEVI.map((k) => [k, r[k] ?? null]));
+    });
+  if (redovi.length === 0) return;
+  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/ndvi_cache`, {
+    method: 'POST',
+    headers: {
+      apikey: env.SUPABASE_SECRET_KEY,
+      'content-type': 'application/json',
+      prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(redovi),
+  });
+  if (!r.ok) console.error('[ndvi_cache] skupni upis nije uspio', r.status, (await r.text()).slice(0, 200));
+}
+
 /** `sub` iz JWT-a — koristi se SAMO za rate limit, nakon što je PostgREST već prihvatio token. */
 export function korisnikIzJwt(jwt: string): string {
   try {
