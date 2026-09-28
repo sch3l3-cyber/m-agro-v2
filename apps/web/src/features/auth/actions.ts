@@ -13,6 +13,7 @@ const PORUKE: Record<AuthErrorCode, string> = {
   weak_password: 'Lozinka je preslaba.',
   rate_limited: 'Previše pokušaja. Pričekaj nekoliko minuta pa pokušaj ponovo.',
   invalid_link: 'Link je istekao ili je već iskorišten. Zatraži novi.',
+  invalid_code: 'Kod nije ispravan ili je istekao. Upiši novi kod iz aplikacije.',
   unknown: 'Nešto je pošlo po zlu. Pokušaj ponovo.',
 };
 
@@ -31,9 +32,50 @@ export async function prijava(_: FormState, fd: FormData): Promise<FormState> {
   const parsed = PrijavaSchema.safeParse({ email: fd.get('email'), lozinka: fd.get('lozinka') });
   if (!parsed.success) return fieldErrors(parsed.error);
 
-  const res = await getAuth().signIn(parsed.data.email, parsed.data.lozinka);
+  const auth = getAuth();
+  const res = await auth.signIn(parsed.data.email, parsed.data.lozinka);
+  if (!res.ok) return { status: 'error', message: PORUKE[res.code] };
+  const next = safeNext(fd.get('next'));
+  // uključen MFA → lozinka nije dovoljna, traži kod (sesija je aal1 dok se ne potvrdi)
+  if ((await auth.mfaStatus()).potrebnoAal2) redirect(`/prijava/mfa?next=${encodeURIComponent(next)}`);
+  redirect(next);
+}
+
+const Kod = /^\d{6}$/;
+
+/** Drugi korak prijave: 6-znamenkasti kod iz aplikacije → sesija aal2. */
+export async function mfaPrijava(_: FormState, fd: FormData): Promise<FormState> {
+  const kod = String(fd.get('kod') ?? '').replace(/\s/g, '');
+  if (!Kod.test(kod)) return { status: 'error', message: 'Upiši 6 znamenki iz aplikacije.', fieldErrors: { kod: '6 znamenki' } };
+  const auth = getAuth();
+  const faktor = (await auth.mfaStatus()).faktori.find((f) => f.potvrden);
+  if (!faktor) redirect('/');
+  const res = await auth.mfaPotvrdi(faktor.id, kod);
   if (!res.ok) return { status: 'error', message: PORUKE[res.code] };
   redirect(safeNext(fd.get('next')));
+}
+
+// ---- uključivanje / isključivanje (stranica Račun) ----
+export type MfaUkljuciOdgovor = { ok: true; factorId: string; qr: string; tajna: string } | { ok: false; poruka: string };
+
+export async function mfaZapocni(): Promise<MfaUkljuciOdgovor> {
+  const r = await getAuth().mfaUkljuci();
+  return r.ok ? r : { ok: false, poruka: 'Uključivanje nije uspjelo. Pokušaj ponovo.' };
+}
+
+export async function mfaPotvrdiUkljucivanje(factorId: unknown, kod: unknown): Promise<{ ok: true } | { ok: false; poruka: string }> {
+  const k = String(kod ?? '').replace(/\s/g, '');
+  if (typeof factorId !== 'string' || !Kod.test(k)) return { ok: false, poruka: 'Upiši 6 znamenki iz aplikacije.' };
+  const r = await getAuth().mfaPotvrdi(factorId, k);
+  return r.ok ? { ok: true } : { ok: false, poruka: PORUKE[r.code] };
+}
+
+export async function mfaIskljuci(factorId: unknown): Promise<{ ok: true } | { ok: false; poruka: string }> {
+  if (typeof factorId !== 'string') return { ok: false, poruka: 'Neispravan zahtjev.' };
+  const auth = getAuth();
+  if ((await auth.mfaStatus()).current !== 'aal2') return { ok: false, poruka: 'Za isključivanje se prijavi s kodom.' };
+  const r = await auth.mfaIskljuci(factorId);
+  return r.ok ? { ok: true } : { ok: false, poruka: 'Isključivanje nije uspjelo.' };
 }
 
 export async function registracija(_: FormState, fd: FormData): Promise<FormState> {
