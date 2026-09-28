@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker, { type Env } from '../src/index';
-import { dimenzije, parsirajStats, statsZahtjev } from '../src/lib/sentinel';
+import { dan, dimenzije, parsirajStats, statsZahtjev } from '../src/lib/sentinel';
 
 const CID = '20000000-0000-4000-8000-00000000000a';
 const env: Env = {
@@ -49,7 +49,16 @@ describe('lekcija #1 — Statistics API bez resx/resy', () => {
   it('zahtjev ne sadrži resx ni resy', () => {
     const z = statsZahtjev(GEOM as never, '2026-05-15');
     expect(JSON.stringify(z)).not.toMatch(/resx|resy/);
-    expect(z.aggregation.timeRange).toEqual({ from: '2026-05-15T00:00:00Z', to: '2026-05-15T23:59:59Z' });
+    expect(z.aggregation.timeRange).toEqual({ from: '2026-05-15T00:00:00Z', to: '2026-05-16T00:00:00Z' });
+  });
+});
+
+describe('vremenski raspon (bug 2026-09-28)', () => {
+  it('dan pokriva PUNI P1D interval — inače Statistical API vrati prazno', () => {
+    const r = dan('2026-09-27');
+    expect(r).toEqual({ from: '2026-09-27T00:00:00Z', to: '2026-09-28T00:00:00Z' });
+    expect(Date.parse(r.to) - Date.parse(r.from)).toBe(86_400_000);
+    expect(dan('2026-12-31').to).toBe('2027-01-01T00:00:00Z');
   });
 });
 
@@ -135,6 +144,21 @@ describe('dijeljeni cache (07_FREE_TIER_STRATEGY)', () => {
     const upis = pozivi.find((p) => p.init?.method === 'POST' && p.url.includes('ndvi_cache'));
     expect((upis?.init?.headers as Record<string, string>).apikey).toBe('secret');
     expect(JSON.parse(String(upis?.init?.body))).toMatchObject({ geom_hash: 'h1', datum: '2026-05-15', status: 'ok' });
+  });
+
+  it("'nema_snimke' iz cachea se ignorira i ne zapisuje (snimka može stići naknadno)", async () => {
+    mockFetch((u, init) => {
+      if (u.includes('/rest/v1/cestice')) return J([{ id: CID, geom_hash: 'h1', geom_arkod: GEOM }]);
+      if (u.includes('/rest/v1/ndvi_cache') && (!init?.method || init.method === 'GET')) return J([{ status: 'nema_snimke', mean: null, min: null, max: null, stdev: null, percentiles: null, sample_count: null, cloud_pct: null }]);
+      if (u.includes('openid-connect/token')) return J({ access_token: 't', expires_in: 600 });
+      if (u.includes('/api/v1/statistics')) return J({ data: [] });
+      return undefined;
+    });
+    const r = await call(`/stats?cestica=${CID}&datum=2026-05-15`, auth);
+    expect(await r.json()).toMatchObject({ status: 'nema_snimke', izCachea: false });
+    await Promise.all(waitUntil);
+    expect(pozivi.some((p) => p.url.includes('/api/v1/statistics'))).toBe(true);
+    expect(pozivi.some((p) => p.init?.method === 'POST' && p.url.includes('ndvi_cache'))).toBe(false);
   });
 
   it('rate limit iscrpljen → 429 prije Sentinel poziva', async () => {

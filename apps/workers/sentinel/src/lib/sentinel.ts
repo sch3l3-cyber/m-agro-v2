@@ -41,9 +41,13 @@ export class SentinelError extends Error {
   }
 }
 
-function dan(datum: string): { from: string; to: string } {
-  // Cijeli UTC dan snimanja (Sentinel-2 preleti Hrvatsku oko 09:40 UTC)
-  return { from: `${datum}T00:00:00Z`, to: `${datum}T23:59:59Z` };
+export function dan(datum: string): { from: string; to: string } {
+  // Cijeli UTC dan snimanja (Sentinel-2 preleti Hrvatsku oko 09:40 UTC).
+  // `to` je ponoć SLJEDEĆEG dana: Statistical API vraća samo PUNE P1D intervale,
+  // pa bi 23:59:59 dao 0 intervala → prazan odgovor → lažno "nema snimke" (bug 2026-09-28).
+  const d = new Date(`${datum}T00:00:00Z`);
+  const sutra = new Date(d.getTime() + 86_400_000).toISOString().slice(0, 10);
+  return { from: `${datum}T00:00:00Z`, to: `${sutra}T00:00:00Z` };
 }
 
 export function bbox(g: Geometrija): [number, number, number, number] {

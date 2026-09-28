@@ -76,7 +76,10 @@ export async function citajCache(env: SupabaseEnv, jwt: string, geomHash: string
   const r = await fetch(url, { headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, authorization: `Bearer ${jwt}` } });
   if (!r.ok) return null; // cache je optimizacija — greška čitanja nije fatalna, ali se logira
   const rows = (await r.json()) as CacheRed[];
-  return rows[0] ? izCachea(rows[0]) : null;
+  // 'nema_snimke' se ne vjeruje iz cachea: snimka se može pojaviti naknadno (obrada kasni)
+  // ili je red zapisan prije ispravka buga s intervalom — ponovno pitaj Sentinel.
+  if (!rows[0] || rows[0].status === 'nema_snimke') return null;
+  return izCachea(rows[0]);
 }
 
 export async function pisiCache(env: SupabaseEnv, geomHash: string, datum: string, i: StatsIshod): Promise<void> {

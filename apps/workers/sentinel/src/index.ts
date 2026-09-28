@@ -67,7 +67,7 @@ async function statsSaCacheom(env: Env, jwt: string, geomHash: string, geom: Par
   if (!(await smijeSentinel(env, jwt))) return null;
   const tok = await getToken({ clientId: env.SENTINEL_CLIENT_ID, clientSecret: env.SENTINEL_CLIENT_SECRET });
   const ishod: StatsIshod = await statistike(tok, geom, datum);
-  ctx.waitUntil(pisiCache(env, geomHash, datum, ishod));
+  if (ishod.status !== 'nema_snimke') ctx.waitUntil(pisiCache(env, geomHash, datum, ishod));
   return { ishod, izCachea: false };
 }
 
