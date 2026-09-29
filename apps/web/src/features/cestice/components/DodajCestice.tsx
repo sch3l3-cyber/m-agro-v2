@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { KULTURE } from '@m-agro/domain';
 import type { Cestica } from '@/lib/db';
 import { useMapStore } from '@/stores/mapStore';
-import { arkodNaTocki, dodajArkodCesticu, poveziSArkodom, type ArkodPregled } from '../arkod-actions';
+import { arkodCijeloGospodarstvo, arkodNaTocki, dodajArkodCesticu, poveziSArkodom, type ArkodPregled, type GrupaOdgovor } from '../arkod-actions';
 
 const ha = new Intl.NumberFormat('hr-HR', { maximumFractionDigits: 2 });
 const INPUT = 'min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base focus:border-list-600 focus:outline-none';
@@ -91,6 +91,7 @@ export function DodajCestice({ gospodarstvoId, cestice, onGotovo }: { gospodarst
             {stanje.p.vrstaUporabe && ` · ${stanje.p.vrstaUporabe}`}
           </p>
           {stanje.p.zone.length > 0 && <p className="text-xs text-amber-800">{stanje.p.zone.join(' · ')}</p>}
+          <CijeloGospodarstvo key={stanje.p.arkodId} gospodarstvoId={gospodarstvoId} arkodId={stanje.p.arkodId} onDodano={(n) => setDodano((d) => [...d, ...n])} />
 
           {stanje.p.postojeca ? (
             <>
@@ -197,6 +198,111 @@ function PoveziSve({ gospodarstvoId, cestice }: { gospodarstvoId: string; cestic
           Poveži sve s ARKOD-om
         </button>
       )}
+    </div>
+  );
+}
+
+type Grupa = Extract<GrupaOdgovor, { ok: true }>['cestice'];
+
+/** ADR-0011: ponudi sve čestice istog nositelja; farmer potvrđuje popis. Dodaje se jedna po jedna (granica iz ARKOD-a na poslužitelju). */
+function CijeloGospodarstvo({ gospodarstvoId, arkodId, onDodano }: { gospodarstvoId: string; arkodId: string; onDodano: (nazivi: string[]) => void }) {
+  const [grupa, setGrupa] = useState<Grupa | null>(null);
+  const [odabrane, setOdabrane] = useState<Set<string>>(new Set());
+  const [greska, setGreska] = useState<string | null>(null);
+  const [tijek, setTijek] = useState<{ gotovo: number; dodano: number; preskoceno: number } | null>(null);
+  const [radi, setRadi] = useState(false);
+  const stani = useRef(false);
+  const [pending, start] = useTransition();
+
+  if (!grupa) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const r = await arkodCijeloGospodarstvo({ gospodarstvoId, arkodId }).catch(() => ({ ok: false as const, poruka: 'Treba internet.' }));
+              if (!r.ok) return setGreska(r.poruka);
+              setGrupa(r.cestice);
+              setOdabrane(new Set(r.cestice.filter((c) => !c.vecImas).map((c) => c.arkodId)));
+            })
+          }
+          className="min-h-11 rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300"
+        >
+          {pending ? 'Tražim…' : 'Ovo je moje — prikaži sve moje ARKOD čestice'}
+        </button>
+        {greska && <p className="text-xs text-red-700">{greska}</p>}
+      </div>
+    );
+  }
+
+  const ukupnoHa = grupa.filter((c) => odabrane.has(c.arkodId)).reduce((s, c) => s + (c.ha ?? 0), 0);
+  const dodaj = async () => {
+    setRadi(true);
+    stani.current = false;
+    let dodano = 0;
+    let preskoceno = 0;
+    const nazivi: string[] = [];
+    const lista = grupa.filter((c) => odabrane.has(c.arkodId));
+    for (const c of lista) {
+      if (stani.current) break;
+      const r = await dodajArkodCesticu({ gospodarstvoId, lon: c.lon, lat: c.lat, naziv: c.naziv, kultura: '' }).catch(() => ({ ok: false as const, poruka: '' }));
+      if (r.ok) {
+        dodano++;
+        nazivi.push(r.naziv);
+      } else preskoceno++;
+      setTijek({ gotovo: dodano + preskoceno, dodano, preskoceno });
+    }
+    onDodano(nazivi);
+    setRadi(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-zinc-50 p-2">
+      <p className="text-sm font-medium">
+        Pronađeno {grupa.length} ARKOD čestica istog korisnika. Označi svoje:
+      </p>
+      <ul className="max-h-60 divide-y divide-zinc-100 overflow-y-auto rounded bg-white ring-1 ring-zinc-200">
+        {grupa.map((c) => (
+          <li key={c.arkodId}>
+            <label className="flex min-h-11 items-center gap-2 px-2 text-sm">
+              <input
+                type="checkbox"
+                disabled={c.vecImas || radi}
+                checked={odabrane.has(c.arkodId)}
+                onChange={(e) =>
+                  setOdabrane((s) => {
+                    const n = new Set(s);
+                    if (e.target.checked) n.add(c.arkodId);
+                    else n.delete(c.arkodId);
+                    return n;
+                  })
+                }
+                className="h-5 w-5 accent-list-600"
+              />
+              <span className="min-w-0 flex-1 truncate">{c.naziv}</span>
+              <span className="text-xs text-zinc-600">{c.vecImas ? 'već imaš' : c.ha !== null ? `${ha.format(c.ha)} ha` : ''}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {tijek && (
+        <p className="text-xs text-zinc-700">
+          {tijek.gotovo}/{odabrane.size} · dodano {tijek.dodano}
+          {tijek.preskoceno > 0 && ` · preskočeno ${tijek.preskoceno} (već postoje ili nisu pronađene)`}
+        </p>
+      )}
+      {radi ? (
+        <button type="button" onClick={() => (stani.current = true)} className="min-h-11 rounded-lg font-semibold ring-1 ring-zinc-300">
+          Zaustavi
+        </button>
+      ) : (
+        <button type="button" disabled={odabrane.size === 0 || (tijek !== null && tijek.gotovo >= odabrane.size)} onClick={() => void dodaj()} className="min-h-12 rounded-xl bg-list-600 font-semibold text-white disabled:opacity-50">
+          Dodaj označene · {odabrane.size} · {ha.format(ukupnoHa)} ha
+        </button>
+      )}
+      <p className="text-xs text-zinc-500">Dodaj samo čestice koje ti obrađuješ. Upit se bilježi; najviše 5 dnevno.</p>
     </div>
   );
 }

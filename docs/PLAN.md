@@ -69,7 +69,8 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
    „ARKOD granica promijenjena — ažurirati?”; rezerva za zemljište izvan ARKOD-a: DGU katastarske čestice (otvorena dozvola).
 - **Opterećenje:** 1 zahtjev prema APPRRR-u po dodiru (vanjski javni servis, bez naše kvote); ~2 ms CPU u workeru.
   Tjedna provjera za 25 000 čestica ≈ 3,5 h usporenog rada u GitHub Actions — izvedivo, ali prije toga zatražiti WFS pristup.
-- **Nadogradnja (ADR-0011, čeka potvrdu APPRRR-a):** vlastiti ARKOD sloj iz javnog `land_parcels.gpkg` (PMTiles na R2)
+- ✅ **„Dodaj cijelo gospodarstvo”** (ADR-0011, provedba 1. dio): dodir jedne čestice → popis svih čestica istog nositelja → potvrda → dodavanje. Tjedni punjač, istočna Hrvatska.
+- **Nadogradnja (ADR-0011):** vlastiti ARKOD sloj iz javnog `land_parcels.gpkg` (PMTiles na R2)
   i „Dodaj cijelo gospodarstvo” — dodir jedne čestice nudi sve čestice istog nositelja (`jpaid`), uz potvrdu i zaštite privatnosti.
 - ✅ (baza) Jedinstvenost MIBPG-a samo za provjerena gospodarstva, `provjereno` postavlja samo admin.
 - **MIBPG pri stvaranju gospodarstva** (ADR-0011 dopuna): učitavanje = MIBPG + dodir jedne svoje čestice; razine provjere

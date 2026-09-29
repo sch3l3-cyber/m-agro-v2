@@ -77,3 +77,17 @@ preglednik” u kojem radi (operacije, NDVI, planiranje), a podaci su vidljivi s
 - **Vrijednost „našeg ARKOD preglednika”:** uz evidenciju i NDVI — priprema Jedinstvenog zahtjeva (kultura po ARKOD čestici
   za sezonu, izvoz popisa za prepisivanje u AGRONET), provjera plodoreda i ograničenja po zonama (pravila tek nakon provjere
   važećih propisa). To je snažan razlog za upis podataka.
+
+## Provedba 1. dio (29. 9. 2026.) — „Dodaj cijelo gospodarstvo”
+Vlasnik je odlučio krenuti s provedbom, a razgovor s APPRRR-om vodi sam.
+- `.github/workflows/arkod.yml` (utorkom + ručno): javni GPKG → `scripts/arkod/ucitaj.py` → `private.arkod_cestice`
+  (arkod_id, **interni broj nositelja**, točka unutar čestice, ha, vrsta uporabe, naziv) — **samo istočna Hrvatska**
+  (lon 16,9–19,5; lat 44,8–46,0), atomarna zamjena (`scripts/arkod/ucitaj.sql`).
+- **`jpaid` se nigdje ne sprema**: punjač ga pretvara u gusti indeks koji se mijenja pri svakom punjenju i odbacuje.
+  Logovi ispisuju samo brojeve i nazive stupaca.
+- `public.arkod_gospodarstvo(arkod_id)` (security definer): čestice istog nositelja; 5 upita dnevno po korisniku;
+  svaki upit u `audit_log` (`arkod.grupni_upit`). Tablice su u shemi `private`, nedostupne klijentu.
+- Granice se ne spremaju u sažetak: svaka potvrđena čestica se dodaje preko postojećeg `dodajArkodCesticu`
+  (ARKOD WMS u točki, EPSG:3765, provjera preklapanja) → jedna logika dodavanja.
+- Veličina: ~40 MB u bazi za istočnu Hrvatsku (procjena); cijela RH tek uz Supabase Pro ili drugu pohranu.
+- Vlastiti vektorski sloj (PMTiles na R2) — sljedeći korak, traži R2 dopuštenje na Cloudflare tokenu.

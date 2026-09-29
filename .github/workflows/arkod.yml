@@ -1,0 +1,50 @@
+name: ARKOD sažetak
+
+# Tjedno: javni ARKOD GPKG (APPRRR) → private.arkod_cestice (ADR-0011).
+# Repo i logovi su JAVNI: skripta ispisuje samo brojeve i nazive stupaca.
+on:
+  schedule:
+    - cron: '23 3 * * 2' # utorkom 03:23 UTC (APPRRR osvježava tjedno)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arkod
+  cancel-in-progress: false
+
+jobs:
+  ucitaj:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q pyogrio==0.10.0 shapely==2.0.6 pyproj==3.7.0 numpy
+      - run: sudo apt-get install -y -qq postgresql-client > /dev/null
+      - name: Preuzmi ARKOD (javni GPKG)
+        run: |
+          curl -sSfL --retry 3 --retry-delay 30 -o land_parcels.gpkg https://www.apprrr.hr/wp-content/uploads/nipp/land_parcels.gpkg
+          echo "veličina: $(du -m land_parcels.gpkg | cut -f1) MB"
+      - name: Sažetak (bez jpaid-a)
+        run: python scripts/arkod/ucitaj.py land_parcels.gpkg arkod.csv
+      - name: Učitaj u bazu
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGUSER: postgres.klgdptmjnwvlzygneqcf
+          PGDATABASE: postgres
+          PGPORT: '5432'
+          PGSSLMODE: require
+        run: |
+          # pooler (IPv4) — naziv ovisi o generaciji projekta
+          for h in aws-1-eu-central-1.pooler.supabase.com aws-0-eu-central-1.pooler.supabase.com; do
+            if PGHOST=$h psql -Atqc 'select 1' > /dev/null 2>&1; then export PGHOST=$h; break; fi
+          done
+          test -n "$PGHOST" || { echo "Nema veze s bazom"; exit 1; }
+          psql -q -f scripts/arkod/ucitaj.sql
+      - name: Počisti
+        if: always()
+        run: rm -f land_parcels.gpkg arkod.csv
