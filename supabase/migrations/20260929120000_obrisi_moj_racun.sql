@@ -36,6 +36,10 @@ begin
      or exists (select 1 from public.memberships m
                 where m.gospodarstvo_id = g.id and m.user_id = v_uid and m.uloga = 'vlasnik');
 
+  -- preostala članstva (u tuđim gospodarstvima) brišemo dok korisnik još postoji:
+  -- audit trigger upisuje actor_id = auth.uid(), a to mora biti važeći FK u trenutku upisa
+  delete from public.memberships where user_id = v_uid;
+
   delete from auth.users where id = v_uid;
 
   -- audit log ostaje (sigurnost), ali anonimiziran: actor_id je već null (on delete set null)
