@@ -7,8 +7,8 @@ import { ProbaSentryLoader } from '@/components/SentryLoader';
 export const metadata: Metadata = { title: 'Admin' };
 export const dynamic = 'force-dynamic';
 
-/** Mora odgovarati SENTINEL_MJESECNI_LIMIT u sentinel workeru (zadano 20000). */
-const LIMIT_KVOTE = 20000;
+/** Mora odgovarati SENTINEL_MJESECNI_LIMIT u sentinel workeru. CDSE besplatno: 10.000 zahtjeva i 10.000 PU/mj → 9000 s rezervom. */
+const LIMIT_KVOTE = 9000;
 const fmt = new Intl.NumberFormat('hr-HR');
 const fmtVrijeme = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Zagreb' });
 

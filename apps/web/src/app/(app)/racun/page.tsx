@@ -14,7 +14,7 @@ export default async function Page() {
   if (!user) redirect('/prijava');
   const mfa = await auth.mfaStatus();
   const faktor = mfa.faktori.find((f) => f.potvrden) ?? null;
-  const admin = (await getDb().adminPregled(20000).catch(() => null)) !== null;
+  const admin = (await getDb().adminPregled(9000).catch(() => null)) !== null;
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-zemlja-50">
       <div className="mx-auto flex max-w-lg flex-col gap-4 p-4">

@@ -51,3 +51,9 @@ Gumb u Račun → „Obriši račun” (funkcija u bazi, bez dodatnog ključa). 
 ## 9. Probni restore backupa (kasnije, prije testera)
 Supabase → Database → Backups: besplatni plan ima dnevne backupe 7 dana; probni restore je na Pro planu —
 alternativa je tjedni `pg_dump` kroz GitHub Actions (Claude može postaviti).
+
+## 10. Odluke o smjeru (docs/PLAN.md §6) — bez žurbe, prije pozivanja testera
+- Poslovni model: što ostaje besplatno zauvijek, što se (eventualno) naplaćuje.
+- Hoće li se podaci ikad dijeliti s trećima (dobavljači, osiguravatelji, otkupljivači) — određuje tekst privole.
+- Pravnik za pravila privatnosti v2 (privola za modele + zasebni opt-in za treće).
+- Popis prvih 10 testnih gospodarstava.

@@ -1,5 +1,7 @@
 # Stanje u odnosu na roadmap (29. 9. 2026.)
 
+> Plan nakon Faze 5 (jednostavni način, kvaliteta podataka, noćno prikupljanje, upozorenja, ML): **`docs/PLAN.md`**, ADR-0009.
+
 Web: https://app.m-agro.hr (i dalje radi i https://m-agro-v2-web.sch3l3.workers.dev) · Sentinel: https://m-agro-v2-sentinel.sch3l3.workers.dev
 
 | Faza | Stanje | Otvoreno |

@@ -23,7 +23,7 @@ export interface Env extends SupabaseEnv {
   SENTINEL_CLIENT_SECRET: string;
   /** Workers Rate Limiting binding — štiti Sentinel kvotu (samo cache promašaji se broje) */
   LIMITER?: { limit(o: { key: string }): Promise<{ success: boolean }> };
-  /** Globalni mjesečni limit jedinica (≈ Sentinel poziva). Zadano 20000 (05_ROADMAP). */
+  /** Globalni mjesečni limit jedinica (≈ Sentinel poziva). CDSE besplatno: 10.000 zahtjeva i 10.000 PU/mj → zadano 9000 (rezerva). */
   SENTINEL_MJESECNI_LIMIT?: string;
 }
 
@@ -70,7 +70,7 @@ async function smijeSentinel(env: Env, jwt: string, jedinice = 1): Promise<boole
     const { success } = await env.LIMITER.limit({ key: korisnikIzJwt(jwt) });
     if (!success) return false;
   }
-  if (!(await potrosiKvotu(env, jedinice, Number(env.SENTINEL_MJESECNI_LIMIT ?? 20000)))) throw new KvotaIscrpljena();
+  if (!(await potrosiKvotu(env, jedinice, Number(env.SENTINEL_MJESECNI_LIMIT ?? 9000)))) throw new KvotaIscrpljena();
   return true;
 }
 
