@@ -15,7 +15,7 @@ upisuješ ih samo na navedenom mjestu. Kad završiš korak, javi Claudeu da dovr
    GitHub → repo → Settings → Secrets and variables → Actions → **Variables** → New → `NEXT_PUBLIC_SENTRY_DSN`.
 4. Javi Claudeu → on dodaje Sentry u kod.
 
-## 3. Vlastita domena app.m-agro.hr (10 min)
+## 3. Vlastita domena app.m-agro.hr (10 min) ✅ gotovo 29. 9.
 1. Cloudflare → Workers & Pages → **m-agro-v2-web** → Settings → **Domains & Routes** → Add → **Custom domain** →
    `app.m-agro.hr` → Add. (DNS zapis Cloudflare radi sam jer je m-agro.hr već kod njega; druga aplikacija na m-agro.hr se ne dira.)
 2. Supabase → Authentication → **URL Configuration**: Site URL = `https://app.m-agro.hr`; u Redirect URLs dodaj
