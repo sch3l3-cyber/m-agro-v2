@@ -20,7 +20,8 @@ from pyproj import Transformer
 GPKG, IZLAZ = sys.argv[1], sys.argv[2]
 # istočna Hrvatska (Slavonija, Baranja, Srijem + rub Moslavine) — proširiti kad dođu korisnici s drugih područja
 LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = 16.9, 44.8, 19.5, 46.0
-POTREBNO = ["id", "jpaid", "land_use_id", "home_name", "area"]
+# ARKOD id je FID sloja (GeoServer ga izlaže kao "id"), ne zaseban stupac
+POTREBNO = ["jpaid", "land_use_id", "home_name", "area"]
 
 svi = [(str(s), str(t)) for s, t in pyogrio.list_layers(GPKG)]
 print("slojevi:", ", ".join(f"{s} ({t})" for s, t in svi))
@@ -43,7 +44,7 @@ if nedostaje:
 do_3765 = Transformer.from_crs(4326, 3765, always_xy=True)
 x1, y1 = do_3765.transform(LON_MIN, LAT_MIN)
 x2, y2 = do_3765.transform(LON_MAX, LAT_MAX)
-meta, _, wkb, vrijednosti = read(GPKG, layer=sloj, columns=POTREBNO, bbox=(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)))
+meta, fids, wkb, vrijednosti = read(GPKG, layer=sloj, columns=POTREBNO, return_fids=True, bbox=(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)))
 stupci = dict(zip(meta["fields"], vrijednosti))
 
 geom = shapely.from_wkb(wkb)
@@ -57,7 +58,7 @@ valjano = (jpaid != "") & (jpaid != "None") & np.isfinite(lon) & np.isfinite(lat
 _, nositelj = np.unique(jpaid, return_inverse=True)
 del jpaid, stupci["jpaid"]  # od ovdje nadalje jpaid ne postoji
 
-ids = np.asarray(stupci["id"])
+ids = np.asarray(fids)
 lu = np.asarray(stupci["land_use_id"])
 naziv = np.asarray(stupci["home_name"])
 area = np.asarray(stupci["area"], dtype=float)
