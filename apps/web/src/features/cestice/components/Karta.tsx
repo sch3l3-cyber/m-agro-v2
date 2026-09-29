@@ -28,7 +28,9 @@ const STIL: StyleSpecification = {
       type: 'raster',
       tiles: ['plocica://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
-      maxzoom: 19,
+      // Esri za Slavoniju ima snimke do z18; z19 je siva pločica "Map data not yet available".
+      // maxzoom 18 → MapLibre dalje uvećava z18 (mutnije, ali prava snimka).
+      maxzoom: 18,
       attribution: 'Snimke i nazivi © Esri, Maxar, Earthstar Geographics',
     },
     // Carto je uveo API ključ (vodeni žig "API KEY REQUIRED") — Esri referentni sloj je besplatan uz atribuciju
@@ -110,6 +112,7 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
       style: STIL,
       center: [18.36, 45.36],
       zoom: 12,
+      maxZoom: 20, // dalje od z20 (4× uvećana z18 pločica) nema korisne slike
       attributionControl: { compact: true },
       dragRotate: false,
     });
