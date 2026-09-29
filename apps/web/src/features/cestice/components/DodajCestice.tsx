@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { KULTURE } from '@m-agro/domain';
 import type { Cestica } from '@/lib/db';
 import { useMapStore } from '@/stores/mapStore';
-import { arkodNaTocki, dodajArkodCesticu, poveziSArkodom, type ArkodPregled } from '../arkod-actions';
+import { arkodNaTocki, arkodPoBrojevima, dodajArkodCesticu, poveziSArkodom, type ArkodPregled, type BrojeviOdgovor } from '../arkod-actions';
 
 const ha = new Intl.NumberFormat('hr-HR', { maximumFractionDigits: 2 });
 const INPUT = 'min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base focus:border-list-600 focus:outline-none';
@@ -150,6 +150,7 @@ export function DodajCestice({ gospodarstvoId, cestice, onGotovo }: { gospodarst
         </div>
       )}
 
+      {stanje.s !== 'pregled' && <UvozPoBrojevima gospodarstvoId={gospodarstvoId} onDodano={(n) => setDodano((d) => [...d, ...n])} />}
       {bezArkoda.length > 0 && stanje.s !== 'pregled' && <PoveziSve gospodarstvoId={gospodarstvoId} cestice={bezArkoda} />}
       <p className="text-xs text-zinc-500">Izvor granica: ARKOD, APPRRR. Nema tvog polja u ARKOD-u? Uvezi datoteku (gore: Uvezi).</p>
     </div>
@@ -201,3 +202,137 @@ function PoveziSve({ gospodarstvoId, cestice }: { gospodarstvoId: string; cestic
   );
 }
 
+
+type Pronadeno = Extract<BrojeviOdgovor, { ok: true }>['pronadeno'];
+
+/** Zalijepi ARKOD brojeve (npr. tablicu iz ARKOD preglednika nakon pretrage po MIBPG-u) → potvrdi → dodaj. */
+function UvozPoBrojevima({ gospodarstvoId, onDodano }: { gospodarstvoId: string; onDodano: (nazivi: string[]) => void }) {
+  const [otvoreno, setOtvoreno] = useState(false);
+  const [tekst, setTekst] = useState('');
+  const [popis, setPopis] = useState<{ pronadeno: Pronadeno; nepronadeno: string[] } | null>(null);
+  const [odabrane, setOdabrane] = useState<Set<string>>(new Set());
+  const [greska, setGreska] = useState<string | null>(null);
+  const [tijek, setTijek] = useState<{ gotovo: number; dodano: number; preskoceno: number } | null>(null);
+  const [radi, setRadi] = useState(false);
+  const stani = useRef(false);
+  const [pending, start] = useTransition();
+
+  if (!otvoreno) {
+    return (
+      <button type="button" onClick={() => setOtvoreno(true)} className="min-h-11 self-start rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300">
+        Imaš popis ARKOD brojeva? Zalijepi ga
+      </button>
+    );
+  }
+
+  if (!popis) {
+    return (
+      <div className="flex flex-col gap-2 rounded-xl bg-zinc-50 p-3 text-sm">
+        <p>
+          U{' '}
+          <a href="https://preglednik.arkod.hr/ARKOD-Web/" target="_blank" rel="noopener noreferrer" className="font-semibold text-list-700 underline">
+            ARKOD pregledniku
+          </a>{' '}
+          upiši svoj MIBPG u „Brzo pretraživanje”, označi tablicu rezultata (svaku stranicu) i zalijepi je ovdje. Dovoljni su i samo ARKOD brojevi.
+        </p>
+        <textarea value={tekst} onChange={(e) => setTekst(e.target.value)} rows={5} placeholder="1437819&#10;1438088&#10;…" className="rounded-lg border border-zinc-300 bg-white p-2 text-base" />
+        {greska && <p className="text-red-700">{greska}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={pending || !tekst.trim()}
+            onClick={() =>
+              start(async () => {
+                setGreska(null);
+                const r = await arkodPoBrojevima({ gospodarstvoId, tekst }).catch(() => ({ ok: false as const, poruka: 'Treba internet.' }));
+                if (!r.ok) return setGreska(r.poruka);
+                setPopis(r);
+                setOdabrane(new Set(r.pronadeno.filter((c) => !c.vecImas).map((c) => c.arkodId)));
+              })
+            }
+            className="min-h-11 flex-1 rounded-lg bg-list-600 font-semibold text-white disabled:opacity-50"
+          >
+            {pending ? 'Tražim…' : 'Pronađi čestice'}
+          </button>
+          <button type="button" onClick={() => setOtvoreno(false)} className="min-h-11 rounded-lg px-3 ring-1 ring-zinc-300">
+            Zatvori
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const lista = popis.pronadeno;
+  const ukupnoHa = lista.filter((c) => odabrane.has(c.arkodId)).reduce((s, c) => s + (c.ha ?? 0), 0);
+  const dodaj = async () => {
+    setRadi(true);
+    stani.current = false;
+    let dodano = 0;
+    let preskoceno = 0;
+    const nazivi: string[] = [];
+    for (const c of lista.filter((x) => odabrane.has(x.arkodId))) {
+      if (stani.current) break;
+      const r = await dodajArkodCesticu({ gospodarstvoId, lon: c.lon, lat: c.lat, naziv: c.naziv, kultura: '' }).catch(() => ({ ok: false as const, poruka: '' }));
+      if (r.ok) {
+        dodano++;
+        nazivi.push(r.naziv);
+      } else preskoceno++;
+      setTijek({ gotovo: dodano + preskoceno, dodano, preskoceno });
+    }
+    onDodano(nazivi);
+    setRadi(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl bg-zinc-50 p-3 text-sm">
+      <p className="font-medium">
+        Pronađeno {lista.length}
+        {popis.nepronadeno.length > 0 && ` · nije pronađeno ${popis.nepronadeno.length} (zasad imamo samo istočnu Hrvatsku)`}
+      </p>
+      <ul className="max-h-60 divide-y divide-zinc-100 overflow-y-auto rounded bg-white ring-1 ring-zinc-200">
+        {lista.map((c) => (
+          <li key={c.arkodId}>
+            <label className="flex min-h-11 items-center gap-2 px-2">
+              <input
+                type="checkbox"
+                disabled={c.vecImas || radi}
+                checked={odabrane.has(c.arkodId)}
+                onChange={(e) =>
+                  setOdabrane((s) => {
+                    const n = new Set(s);
+                    if (e.target.checked) n.add(c.arkodId);
+                    else n.delete(c.arkodId);
+                    return n;
+                  })
+                }
+                className="h-5 w-5 accent-list-600"
+              />
+              <span className="min-w-0 flex-1 truncate">{c.naziv}</span>
+              <span className="text-xs text-zinc-600">{c.vecImas ? 'već imaš' : c.ha !== null ? `${ha.format(c.ha)} ha` : ''}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {tijek && (
+        <p className="text-xs text-zinc-700">
+          {tijek.gotovo}/{odabrane.size} · dodano {tijek.dodano}
+          {tijek.preskoceno > 0 && ` · preskočeno ${tijek.preskoceno} (već imaš sličnu česticu ili ARKOD ne odgovara)`}
+        </p>
+      )}
+      {radi ? (
+        <button type="button" onClick={() => (stani.current = true)} className="min-h-11 rounded-lg font-semibold ring-1 ring-zinc-300">
+          Zaustavi
+        </button>
+      ) : (
+        <div className="flex gap-2">
+          <button type="button" disabled={odabrane.size === 0 || (tijek !== null && tijek.gotovo >= odabrane.size)} onClick={() => void dodaj()} className="min-h-12 flex-1 rounded-xl bg-list-600 font-semibold text-white disabled:opacity-50">
+            Dodaj označene · {odabrane.size} · {ha.format(ukupnoHa)} ha
+          </button>
+          <button type="button" onClick={() => { setPopis(null); setTijek(null); }} className="min-h-12 rounded-xl px-3 ring-1 ring-zinc-300">
+            Natrag
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

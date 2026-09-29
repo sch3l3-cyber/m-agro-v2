@@ -293,6 +293,10 @@ export type Database = {
         Args: { p_usd: number };
         Returns: undefined;
       };
+      arkod_po_brojevima: {
+        Args: { p_ids: number[] };
+        Returns: { arkod_id: number; lon: number; lat: number; ha: number | null; land_use_id: number | null; naziv: string | null }[];
+      };
       cestica_tocka: {
         Args: { p_cestica: string };
         Returns: { lon: number; lat: number }[];

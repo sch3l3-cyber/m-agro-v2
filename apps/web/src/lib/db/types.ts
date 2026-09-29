@@ -117,6 +117,22 @@ export interface KontekstCestice {
   ndvi: NdviTocka[];
 }
 
+export interface ArkodSazetak {
+  arkodId: string;
+  lon: number;
+  lat: number;
+  ha: number | null;
+  landUseId: number | null;
+  naziv: string | null;
+}
+
+export interface ArkodRepo {
+  /** Javni sažetak ARKOD čestica po brojevima (≤ 500; 20 upita/dan; audit). */
+  poBrojevima(ids: number[]): Promise<ArkodSazetak[]>;
+  /** ARKOD brojevi koje gospodarstvo već ima. */
+  postojeci(gospodarstvoId: string): Promise<Set<string>>;
+}
+
 export type NacinRada = 'jednostavni' | 'napredni';
 
 export interface ProfilRepo {
@@ -159,6 +175,7 @@ export interface DbClient {
   operacije: OperacijeRepo;
   ai: AiRepo;
   profil: ProfilRepo;
+  arkod: ArkodRepo;
   /** Za /api/health — jeftin upit koji dokazuje da je baza dostupna. */
   ping(): Promise<boolean>;
 }

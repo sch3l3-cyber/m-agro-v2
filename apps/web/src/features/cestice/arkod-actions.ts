@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { arkodUpitUrl, lpisNaziv, parsirajArkod, UrediCesticuSchema, type ArkodCestica } from '@m-agro/domain';
+import { arkodBrojeviIzTeksta, arkodUpitUrl, lpisNaziv, parsirajArkod, UrediCesticuSchema, type ArkodCestica } from '@m-agro/domain';
 import { getAuth } from '@/lib/auth';
 import { DbError, getDb } from '@/lib/db';
 
@@ -137,3 +137,34 @@ export async function poveziSArkodom(ulaz: unknown): Promise<{ ok: true; arkodId
   }
 }
 
+
+export type BrojeviOdgovor =
+  | { ok: true; pronadeno: { arkodId: string; lon: number; lat: number; ha: number | null; naziv: string; vrstaUporabe: string | null; vecImas: boolean }[]; nepronadeno: string[] }
+  | { ok: false; poruka: string };
+
+/**
+ * „Imaš popis ARKOD brojeva?” — zamjena za Python generator + QGIS. Farmer zalijepi brojeve (npr. iz ARKOD preglednika,
+ * pretraga po MIBPG-u), mi iz javnog sažetka vratimo popis za potvrdu; granice se dohvaćaju tek pri dodavanju.
+ */
+export async function arkodPoBrojevima(ulaz: unknown): Promise<BrojeviOdgovor> {
+  const p = z.object({ gospodarstvoId: z.uuid(), tekst: z.string().max(200_000) }).safeParse(ulaz);
+  if (!p.success) return { ok: false, poruka: 'Podaci nisu ispravni.' };
+  if (!(await prijavljen())) return { ok: false, poruka: 'Potrebna je prijava.' };
+  const ids = arkodBrojeviIzTeksta(p.data.tekst);
+  if (ids.length === 0) return { ok: false, poruka: 'U tekstu nema ARKOD brojeva (5–9 znamenki).' };
+  if (ids.length > 500) return { ok: false, poruka: 'Najviše 500 ARKOD brojeva odjednom.' };
+  const db = getDb();
+  try {
+    const [nadeni, imam] = await Promise.all([db.arkod.poBrojevima(ids), db.arkod.postojeci(p.data.gospodarstvoId)]);
+    const skup = new Set(nadeni.map((n) => n.arkodId));
+    return {
+      ok: true,
+      pronadeno: nadeni.map((c) => ({ arkodId: c.arkodId, lon: c.lon, lat: c.lat, ha: c.ha, naziv: c.naziv?.trim() || `ARKOD ${c.arkodId}`, vrstaUporabe: lpisNaziv(c.landUseId), vecImas: imam.has(c.arkodId) })),
+      nepronadeno: ids.map(String).filter((id) => !skup.has(id)),
+    };
+  } catch (err) {
+    if (err instanceof DbError && err.code === 'P0001') return { ok: false, poruka: 'Dosegnut je dnevni broj takvih upita (20). Pokušaj sutra.' };
+    console.error('[arkod] po brojevima', err);
+    return { ok: false, poruka: 'Popis nije dostupan. Pokušaj ponovo.' };
+  }
+}

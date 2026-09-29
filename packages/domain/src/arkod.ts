@@ -109,3 +109,16 @@ export function parsirajArkod(json: unknown): ArkodCestica | null {
     geom,
   };
 }
+
+/**
+ * ARKOD brojevi iz zalijepljenog teksta (tablica iz ARKOD preglednika, popis, Excel stupac).
+ * Uzima samo brojeve od 5 do 9 znamenki (MIPRA 200, površine „0.62 ha” i sl. otpadaju), bez duplikata, redom.
+ */
+export function arkodBrojeviIzTeksta(tekst: string): number[] {
+  const vidjeni = new Set<number>();
+  for (const m of tekst.matchAll(/(?<![\d.,])\d{5,9}(?![\d.,]\d)/g)) {
+    const n = Number(m[0]);
+    if (Number.isSafeInteger(n)) vidjeni.add(n);
+  }
+  return [...vidjeni];
+}

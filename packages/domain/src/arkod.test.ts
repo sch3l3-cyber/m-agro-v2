@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arkodUpitUrl, parsirajArkod, uHtrs96 } from './arkod';
+import { arkodBrojeviIzTeksta, arkodUpitUrl, parsirajArkod, uHtrs96 } from './arkod';
 
 describe('ARKOD', () => {
   it('točka u HTRS96/TM', () => {
@@ -41,5 +41,19 @@ describe('ARKOD', () => {
   it('prazan odgovor → null; neočekivan oblik → greška', () => {
     expect(parsirajArkod({ type: 'FeatureCollection', features: [] })).toBeNull();
     expect(() => parsirajArkod({ nesto: 1 })).toThrow();
+  });
+});
+
+describe('ARKOD brojevi iz teksta', () => {
+  it('tablica iz preglednika', () => {
+    const t = `ARKOD ID\tMIPRA\tUPORABA\tDOMAĆE IME\tPOVRŠINA
+1437819\t200\tOranica\tCIGLANA MIROVIĆ-ERO\t0.62 ha
+1438088\t200\tOranica\tORIŠJE PINTERIĆ MATIJA\t0.3 ha
+1438397\t200\tOranica\tTABLA CIGLANA\t18.1 ha
+1437819 duplikat`;
+    expect(arkodBrojeviIzTeksta(t)).toEqual([1437819, 1438088, 1438397]);
+  });
+  it('popis odvojen zarezima, bez decimala i MIBPG-a od 6 znamenki kao dijela decimala', () => {
+    expect(arkodBrojeviIzTeksta('2242292, 2242376;3218547\n12.5 ha 1234 200')).toEqual([2242292, 2242376, 3218547]);
   });
 });

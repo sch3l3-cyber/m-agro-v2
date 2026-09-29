@@ -104,3 +104,13 @@ bila je slučajno sukladna i s grupiranjem po području.
 - `private.arkod_cestice` ostaje (tjedni punjač): točke, površine i vrste uporabe svih čestica istočne Hrvatske za
   regionalne agregate (Faza 8) i budući ARKOD sloj na karti. Stupac `nositelj` = indeks prostorne grupe.
 - Pouka: pretpostavku o značenju atributa provjeriti na **raspodjeli cijelog skupa**, ne na dva primjera.
+
+## Uvoz po ARKOD brojevima (30. 9. 2026.)
+- ARKOD preglednik (javno, bez prijave) u „Brzom pretraživanju” po **MIBPG-u** vraća popis ARKOD čestica gospodarstva
+  (provjereno s Ivanovim MIBPG-om, uz njegov izričit zahtjev: 51 čestica / 112,3 ha). ARKOD ID = FID u javnom GPKG-u:
+  svih 51 pronađeno u `private.arkod_cestice`.
+- Preglednik to radi kroz interni GWT-RPC (`/ARKOD-Web/arkod_web/wfs_rpc`) — **ne koristimo ga** (nedokumentirano
+  unutarnje sučelje; krhko; bez dogovora s APPRRR-om). Za automatski uvoz po MIBPG-u tražiti službeni servis (vlasnik).
+- Zamjena za Python generator + QGIS: „Imaš popis ARKOD brojeva? Zalijepi ga” — farmer zalijepi tablicu iz preglednika
+  ili brojeve → `arkod_po_brojevima` (≤ 500 brojeva, 20 upita/dan, audit) vraća javni sažetak → potvrda →
+  svaka čestica se dodaje postojećim `dodajArkodCesticu` (granica iz WMS-a, provjera preklapanja).

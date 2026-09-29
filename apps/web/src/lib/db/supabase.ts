@@ -247,6 +247,21 @@ export const supabaseDb: DbClient = {
     },
   },
 
+  arkod: {
+    async poBrojevima(ids) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.rpc('arkod_po_brojevima', { p_ids: ids });
+      if (error) fail('arkod.poBrojevima', error);
+      return (data ?? []).map((r) => ({ arkodId: String(r.arkod_id), lon: Number(r.lon), lat: Number(r.lat), ha: r.ha === null ? null : Number(r.ha), landUseId: r.land_use_id, naziv: r.naziv }));
+    },
+    async postojeci(gospodarstvoId) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.from('cestice').select('arkod_id').eq('gospodarstvo_id', gospodarstvoId).not('arkod_id', 'is', null);
+      if (error) fail('arkod.postojeci', error);
+      return new Set(data.map((r) => String(r.arkod_id)));
+    },
+  },
+
   profil: {
     async nacin(userId) {
       const sb = await supabaseForRequest();
