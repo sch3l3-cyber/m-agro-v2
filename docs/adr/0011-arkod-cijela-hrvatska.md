@@ -91,3 +91,16 @@ Vlasnik je odlučio krenuti s provedbom, a razgovor s APPRRR-om vodi sam.
   (ARKOD WMS u točki, EPSG:3765, provjera preklapanja) → jedna logika dodavanja.
 - Veličina: ~40 MB u bazi za istočnu Hrvatsku (procjena); cijela RH tek uz Supabase Pro ili drugu pohranu.
 - Vlastiti vektorski sloj (PMTiles na R2) — sljedeći korak, traži R2 dopuštenje na Cloudflare tokenu.
+
+## ISPRAVAK (30. 9. 2026.) — `jpaid` nije oznaka gospodarstva
+Prvo punjenje (361 450 čestica istočne Hrvatske) pokazalo je samo **2 015 različitih `jpaid` vrijednosti**; u grupi
+Ivanove čestice PTC32 je 829 čestica / 1 724 ha. `jpaid` je dakle **prostorna grupa** (vjerojatno katastarska općina ili
+slična jedinica), ne nositelj. Ranija pretpostavka (dvije Ivanove susjedne čestice isti `jpaid`, udaljenija drugi)
+bila je slučajno sukladna i s grupiranjem po području.
+- „Dodaj cijelo gospodarstvo” preko `jpaid`-a je **ukinuto** prije ikakve upotrebe (migracija `20260930000000`):
+  nudilo bi tuđe čestice iz okolice.
+- Javni ARKOD podaci **ne sadrže vezu čestica → gospodarstvo**. Uvoz svih čestica po MIBPG-u moguć je samo uz
+  podatke/sučelje APPRRR-a (vlasnik razgovara s agencijom) ili izvoz koji farmer sam napravi iz ARKOD-a/AGRONET-a.
+- `private.arkod_cestice` ostaje (tjedni punjač): točke, površine i vrste uporabe svih čestica istočne Hrvatske za
+  regionalne agregate (Faza 8) i budući ARKOD sloj na karti. Stupac `nositelj` = indeks prostorne grupe.
+- Pouka: pretpostavku o značenju atributa provjeriti na **raspodjeli cijelog skupa**, ne na dva primjera.

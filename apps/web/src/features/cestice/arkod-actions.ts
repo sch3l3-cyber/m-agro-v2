@@ -137,26 +137,3 @@ export async function poveziSArkodom(ulaz: unknown): Promise<{ ok: true; arkodId
   }
 }
 
-export type GrupaOdgovor =
-  | { ok: true; cestice: { arkodId: string; lon: number; lat: number; ha: number | null; naziv: string; vrstaUporabe: string | null; vecImas: boolean }[] }
-  | { ok: false; poruka: string };
-
-/** „Dodaj cijelo gospodarstvo” (ADR-0011): sve čestice istog nositelja kao dodirnuta. Limit i audit su u bazi. */
-export async function arkodCijeloGospodarstvo(ulaz: unknown): Promise<GrupaOdgovor> {
-  const p = z.object({ gospodarstvoId: z.uuid(), arkodId: z.string().regex(/^\d{1,15}$/) }).safeParse(ulaz);
-  if (!p.success) return { ok: false, poruka: 'Podaci nisu ispravni.' };
-  if (!(await prijavljen())) return { ok: false, poruka: 'Potrebna je prijava.' };
-  const db = getDb();
-  try {
-    const [grupa, imam] = await Promise.all([db.arkod.gospodarstvo(p.data.arkodId), db.arkod.postojeci(p.data.gospodarstvoId)]);
-    if (grupa.length === 0) return { ok: false, poruka: 'Za ovu česticu još nemamo popis ostalih čestica (učitava se jednom tjedno, zasad za istočnu Hrvatsku).' };
-    return {
-      ok: true,
-      cestice: grupa.map((c) => ({ arkodId: c.arkodId, lon: c.lon, lat: c.lat, ha: c.ha, naziv: c.naziv?.trim() || `ARKOD ${c.arkodId}`, vrstaUporabe: lpisNaziv(c.landUseId), vecImas: imam.has(c.arkodId) })),
-    };
-  } catch (err) {
-    if (err instanceof DbError && err.code === 'P0001') return { ok: false, poruka: 'Dosegnut je dnevni broj takvih upita (5). Pokušaj sutra ili dodaj čestice jednu po jednu.' };
-    console.error('[arkod] grupa', err);
-    return { ok: false, poruka: 'Popis nije dostupan. Pokušaj ponovo.' };
-  }
-}

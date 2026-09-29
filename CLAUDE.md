@@ -22,9 +22,9 @@ Repo je jedini izvor istine (lekcija #15). Prije rada pročitaj `README.md`, `do
 - **Komercijalni prag**: Open-Meteo besplatni i Esri pločice bez ključa nisu za komercijalnu upotrebu — vidi PLAN.md §5.3.
 - **Čestice**: glavni način dodavanja je dodir na ARKOD česticu (ADR-0010) — ARKOD WMS GetFeatureInfo uvijek u
   EPSG:3765 (u 4326 su koordinate zaokružene na ~10 m), preko poslužitelja, bez masovnog skidanja; izvor „ARKOD, APPRRR”.
-- **ARKOD `jpaid`** (ADR-0011) je pseudonim nositelja gospodarstva = osobni podatak: nikad ga ne spremati za tuđa
-  gospodarstva, ne stavljati u pločice, ne omogućiti pretragu po MIBPG/jpaid/nazivu; grupni uvoz samo iz dodirnute
-  čestice, uz potvrdu korisnika i audit. Nikad ne tražiti ni koristiti farmerove ARKOD/AGRONET pristupne podatke.
-  Punjač (`scripts/arkod/`) jpaid pretvara u interni broj i odbacuje; `private.arkod_cestice` nikad ne izlagati klijentu.
+- **ARKOD `jpaid`** je prostorna grupa (~katastarska općina), NE gospodarstvo (ADR-0011 ispravak) — ne koristiti za
+  grupiranje po korisniku. Javni ARKOD nema vezu čestica → gospodarstvo. Nikad ne tražiti ni koristiti farmerove
+  ARKOD/AGRONET pristupne podatke; ne omogućiti pretragu tuđih gospodarstava. `private.arkod_cestice` (tjedni punjač
+  `scripts/arkod/`) nikad ne izlagati klijentu pojedinačno — samo agregati.
 - **Veličina workera**: proj4/turf samo u pregledniku (`@m-agro/domain/uvoz`). Na poslužitelju za HTRS96 koristi
   `htrs96.ts` (bez ovisnosti, < 1 mm od proj4). Ništa sa side-effectima (proj4.defs) u glavnom `@m-agro/domain` indeksu.
