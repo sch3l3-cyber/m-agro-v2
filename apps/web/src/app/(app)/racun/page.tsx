@@ -5,6 +5,7 @@ import { getAuth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { MfaPostavke } from '@/features/auth/components/MfaPostavke';
 import { ObrisiRacun } from '@/features/auth/components/ObrisiRacun';
+import { NacinPrekidac } from '@/features/racun/NacinPrekidac';
 
 export const metadata: Metadata = { title: 'Račun' };
 
@@ -15,6 +16,7 @@ export default async function Page() {
   const mfa = await auth.mfaStatus();
   const faktor = mfa.faktori.find((f) => f.potvrden) ?? null;
   const admin = (await getDb().adminPregled(9000).catch(() => null)) !== null;
+  const nacin = await getDb().profil.nacin(user.id);
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-zemlja-50">
       <div className="mx-auto flex max-w-lg flex-col gap-4 p-4">
@@ -31,6 +33,10 @@ export default async function Page() {
             Admin pregled →
           </Link>
         )}
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200">
+          <h2 className="mb-3 font-semibold">Način rada</h2>
+          <NacinPrekidac nacin={nacin} />
+        </section>
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200">
           <h2 className="mb-2 font-semibold">Moji podaci</h2>
           <p className="mb-3 text-sm text-zinc-600">Preuzmi sve svoje podatke (gospodarstva, čestice kao GeoJSON, operacije) u jednoj datoteci.</p>

@@ -143,6 +143,29 @@ export const supabaseDb: DbClient = {
       if (count === 0) throw new DbError('cestice.remove: nema pristupa ili zapis ne postoji', 'not_found');
     },
 
+    async ndviNedavno(gospodarstvoId, odDatum) {
+      const sb = await supabaseForRequest();
+      const { data: c, error } = await sb.from('cestice').select('id, geom_hash').eq('gospodarstvo_id', gospodarstvoId);
+      if (error) fail('cestice.ndviNedavno', error);
+      const poHashu = new Map<string, string[]>();
+      for (const r of c) if (r.geom_hash) poHashu.set(r.geom_hash, [...(poHashu.get(r.geom_hash) ?? []), r.id]);
+      const ishod: Record<string, { datum: string; mean: number }[]> = {};
+      const hashevi = [...poHashu.keys()];
+      // u serijama — URL PostgREST upita ima granicu duljine
+      for (let i = 0; i < hashevi.length; i += 100) {
+        const { data: n, error: e2 } = await sb
+          .from('ndvi_cache')
+          .select('geom_hash, datum, mean')
+          .in('geom_hash', hashevi.slice(i, i + 100))
+          .eq('status', 'ok')
+          .gte('datum', odDatum)
+          .not('mean', 'is', null);
+        if (e2) fail('cestice.ndviNedavno.ndvi', e2);
+        for (const t of n) for (const id of poHashu.get(t.geom_hash) ?? []) (ishod[id] ??= []).push({ datum: t.datum, mean: Number(t.mean) });
+      }
+      return ishod;
+    },
+
     async kontekst(id, brojSnimki) {
       const sb = await supabaseForRequest();
       const { data: c, error } = await sb
@@ -185,6 +208,21 @@ export const supabaseDb: DbClient = {
           .map((t) => ({ datum: t.datum, mean: Number(t.mean), p10: pct(t.percentiles, '10'), p90: pct(t.percentiles, '90'), oblacnoPct: t.cloud_pct }))
           .reverse(),
       };
+    },
+  },
+
+  profil: {
+    async nacin(userId) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.from('profiles').select('nacin').eq('id', userId).maybeSingle();
+      if (error) fail('profil.nacin', error);
+      return data?.nacin === 'jednostavni' ? 'jednostavni' : 'napredni';
+    },
+    async postaviNacin(userId, nacin) {
+      const sb = await supabaseForRequest();
+      const { error, count } = await sb.from('profiles').update({ nacin }, { count: 'exact' }).eq('id', userId);
+      if (error) fail('profil.postaviNacin', error);
+      if (count === 0) throw new DbError('profil.postaviNacin: profil ne postoji', 'not_found');
     },
   },
 

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import type { Operacija } from '@/lib/db';
 import { idbSpremiste, jeGreskaMreze, pretplati, spremiListu, stanjeReda, ucitajListu, uRed } from '@/lib/offline/red';
 import type { StavkaReda } from '@/lib/offline/sinkronizacija';
-import { dodajOperaciju, obrisiOperaciju, ucitajOperacije } from '../actions';
+import { dodajOperaciju, dodajOperacijeVise, obrisiOperaciju, ucitajOperacije } from '../actions';
 
 const fmtDatum = new Intl.DateTimeFormat('hr-HR', { day: 'numeric', month: 'numeric', year: 'numeric' });
 const danas = () => {
@@ -79,7 +79,7 @@ export function OperacijeTab({
   if (forma)
     return (
       <OperacijaForma
-        cesticaId={cesticaId}
+        cesticeIds={[cesticaId]}
         gospodarstvoId={gospodarstvoId}
         kultura={kultura}
         onGotovo={() => {
@@ -205,22 +205,34 @@ function OperacijaRed({ o, smijeBrisati, onObrisano }: { o: Operacija; smijeBris
   );
 }
 
-function OperacijaForma({
-  cesticaId,
+/** Forma radnje za jednu ili više čestica (jednostavni način). Ista validacija i red bez signala. */
+export function OperacijaForma({
+  cesticeIds,
   gospodarstvoId,
   kultura,
   onGotovo,
   onOdustani,
+  gumb = 'Spremi',
 }: {
-  cesticaId: string;
+  cesticeIds: string[];
   gospodarstvoId: string;
   kultura: string | null;
-  onGotovo: () => void;
+  onGotovo: (poruka?: string) => void;
   onOdustani: () => void;
+  gumb?: string;
 }) {
   const router = useRouter();
   const [tip, setTip] = useState<TipOperacije>('prihrana');
-  const [localId] = useState(() => crypto.randomUUID());
+  // stabilan localId po čestici → ponovljeno slanje (npr. nakon prekida) ne stvara duplikate
+  const [localIds] = useState(() => new Map<string, string>());
+  const localIdZa = (cid: string) => {
+    let id = localIds.get(cid);
+    if (!id) {
+      id = crypto.randomUUID();
+      localIds.set(cid, id);
+    }
+    return id;
+  };
   const [greska, setGreska] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -229,21 +241,29 @@ function OperacijaForma({
     setGreska(null);
     const fd = new FormData(e.currentTarget);
     const v = (k: string) => String(fd.get(k) ?? '');
-    const operacija = { tip, localId, datum: v('datum'), note: v('note'), kultura: v('kultura'), sorta: v('sorta'), fert: v('fert'), product: v('product'), amount: v('amount'), unit: v('unit'), vlaga: v('vlaga'), hektolitarska: v('hektolitarska'), dubina: v('dubina') };
+    const polja = { tip, datum: v('datum'), note: v('note'), kultura: v('kultura'), sorta: v('sorta'), fert: v('fert'), product: v('product'), amount: v('amount'), unit: v('unit'), vlaga: v('vlaga'), hektolitarska: v('hektolitarska'), dubina: v('dubina') };
+    if (cesticeIds.length === 0) return setGreska('Odaberi barem jednu česticu.');
+    const stavke = cesticeIds.map((cid) => ({ cesticaId: cid, operacija: { ...polja, localId: localIdZa(cid) } }));
     // ista validacija kao na poslužitelju — greška se vidi odmah, i bez signala
-    const provjera = NovaOperacijaSchema.safeParse(operacija);
+    const provjera = NovaOperacijaSchema.safeParse(stavke[0]?.operacija);
     if (!provjera.success) return setGreska(provjera.error.issues[0]?.message ?? 'Provjeri unos.');
     const uRedCekanja = async () => {
-      await uRed({ localId, cesticaId, gospodarstvoId, operacija });
-      onGotovo();
+      for (const st of stavke) await uRed({ localId: st.operacija.localId, cesticaId: st.cesticaId, gospodarstvoId, operacija: st.operacija });
+      onGotovo(`Bez signala — ${stavke.length === 1 ? 'radnja će se poslati' : `${stavke.length} radnji će se poslati`} sama kad se vrati internet.`);
     };
     startTransition(async () => {
       if (!navigator.onLine) return uRedCekanja();
       try {
-        const r = await dodajOperaciju({ cesticaId, gospodarstvoId, operacija });
+        if (stavke.length === 1 && stavke[0]) {
+          const r = await dodajOperaciju({ cesticaId: stavke[0].cesticaId, gospodarstvoId, operacija: stavke[0].operacija });
+          if (!r.ok) return setGreska(r.poruka);
+          if (r.kulturaPromijenjena) router.refresh();
+          return onGotovo();
+        }
+        const r = await dodajOperacijeVise({ gospodarstvoId, stavke });
         if (!r.ok) return setGreska(r.poruka);
-        if (r.kulturaPromijenjena) router.refresh();
-        onGotovo();
+        router.refresh();
+        onGotovo(r.neuspjelo.length ? `Spremljeno na ${r.spremljeno} čestica; ${r.neuspjelo.length} nije uspjelo — pokušaj ponovo za njih.` : `Spremljeno na ${r.spremljeno} čestica.`);
       } catch (err) {
         if (jeGreskaMreze(err)) return uRedCekanja();
         setGreska('Spremanje nije uspjelo. Pokušaj ponovo.');
@@ -360,7 +380,7 @@ function OperacijaForma({
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={pending} className="flex-1">
-          {pending ? 'Spremam…' : 'Spremi'}
+          {pending ? 'Spremam…' : gumb}
         </Button>
         <Button type="button" variant="ghost" onClick={onOdustani} disabled={pending}>
           Odustani

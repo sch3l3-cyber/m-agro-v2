@@ -55,6 +55,8 @@ export interface CesticeRepo {
   postaviKulturu(id: string, kultura: string): Promise<void>;
   /** RLS: samo vlasnik. Kaskadno briše operacije; audit trigger bilježi brisanje. */
   remove(id: string): Promise<void>;
+  /** Čiste NDVI snimke od datuma za sve čestice gospodarstva (za semafor). Ključ = id čestice. */
+  ndviNedavno(gospodarstvoId: string, odDatum: string): Promise<Record<string, { datum: string; mean: number }[]>>;
   /** Čestica + NDVI povijest iz dijeljenog cachea. null = nema pristupa. */
   kontekst(id: string, brojSnimki: number): Promise<KontekstCestice | null>;
 }
@@ -107,6 +109,13 @@ export interface KontekstCestice {
   ndvi: NdviTocka[];
 }
 
+export type NacinRada = 'jednostavni' | 'napredni';
+
+export interface ProfilRepo {
+  nacin(userId: string): Promise<NacinRada>;
+  postaviNacin(userId: string, nacin: NacinRada): Promise<void>;
+}
+
 export type AiRezervacija = 'ok' | 'sat' | 'mjesec';
 
 export interface AiRepo {
@@ -141,6 +150,7 @@ export interface DbClient {
   cestice: CesticeRepo;
   operacije: OperacijeRepo;
   ai: AiRepo;
+  profil: ProfilRepo;
   /** Za /api/health — jeftin upit koji dokazuje da je baza dostupna. */
   ping(): Promise<boolean>;
 }

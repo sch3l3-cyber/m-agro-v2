@@ -1,25 +1,52 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { imaOvlast } from '@m-agro/domain';
+import { imaOvlast, ndviSemafor, type Semafor } from '@m-agro/domain';
 import { getAuth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { aiUkljucen } from '@/lib/ai';
-import { ParceleView } from '@/features/cestice/components/ParceleView';
+import { GospodarstvoPrikaz } from '@/features/pregled/components/GospodarstvoPrikaz';
+import type { ZadnjaRadnja } from '@/features/pregled/components/JednostavniPregled';
 
 export const metadata: Metadata = { title: 'Čestice' };
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ uvoz?: string }> }) {
+/** Izvan komponente: Date.now() nije dopušten u renderu (react-compiler lint). */
+function datumi() {
+  const sad = Date.now();
+  return {
+    danas: new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zagreb' }).format(sad),
+    pomak: (d: number) => new Date(sad - d * 86_400_000).toISOString().slice(0, 10),
+  };
+}
+
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ uvoz?: string; prikaz?: string }> }) {
   const { id } = await params;
-  const { uvoz } = await searchParams;
+  const { uvoz, prikaz } = await searchParams;
   const user = await getAuth().getUser();
   if (!user) redirect('/prijava');
 
   const db = getDb();
   const gosp = await db.gospodarstva.get(id, user.id);
   if (!gosp) notFound();
-  const cestice = await db.cestice.listByGospodarstvo(id);
+  const { danas, pomak } = datumi();
+  const [cestice, nacin, ndvi, operacije] = await Promise.all([
+    db.cestice.listByGospodarstvo(id),
+    db.profil.nacin(user.id),
+    db.cestice.ndviNedavno(id, pomak(50)).catch(() => ({}) as Record<string, { datum: string; mean: number }[]>),
+    db.operacije.listByGospodarstvo(id, pomak(365), danas).catch(() => []),
+  ]);
   const smijeUvoz = imaOvlast(gosp.uloga, 'clan');
+
+  // zadnja radnja i zadnja žetva/obrada po čestici (operacije su najnovije prve)
+  const zadnjeRadnje: Record<string, ZadnjaRadnja> = {};
+  const zadnjaZetva: Record<string, string> = {};
+  for (const o of operacije) {
+    zadnjeRadnje[o.cesticaId] ??= { tip: o.tip, datum: o.datum };
+    if (o.tip === 'zetva' || o.tip === 'obrada') zadnjaZetva[o.cesticaId] ??= o.datum;
+  }
+  const semafori: Record<string, Semafor> = {};
+  for (const c of cestice) semafori[c.id] = ndviSemafor(ndvi[c.id] ?? [], danas, zadnjaZetva[c.id] ?? null);
+  const pocetni = prikaz === 'karta' || prikaz === 'pregled' ? prikaz : nacin === 'jednostavni' ? 'pregled' : 'karta';
 
   return (
     <>
@@ -72,7 +99,17 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           </div>
         </div>
       ) : (
-        <ParceleView cestice={cestice} gospodarstvoId={id} smijeUredjivati={smijeUvoz} smijeBrisati={imaOvlast(gosp.uloga, 'vlasnik')} ai={aiUkljucen()} />
+        <GospodarstvoPrikaz
+          cestice={cestice}
+          gospodarstvoId={id}
+          smijeUredjivati={smijeUvoz}
+          smijeBrisati={imaOvlast(gosp.uloga, 'vlasnik')}
+          ai={aiUkljucen()}
+          napredno={nacin === 'napredni'}
+          pocetni={pocetni}
+          semafori={semafori}
+          zadnjeRadnje={zadnjeRadnje}
+        />
       )}
     </>
   );

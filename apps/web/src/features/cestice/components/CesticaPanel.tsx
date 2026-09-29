@@ -25,6 +25,7 @@ export function CesticaPanel({
   sazeto = false,
   onRasiri,
   ai = false,
+  napredno = true,
 }: {
   cestica: Cestica;
   gospodarstvoId: string;
@@ -36,6 +37,8 @@ export function CesticaPanel({
   onRasiri?: () => void;
   /** AI savjetnik uključen (postoji ANTHROPIC_API_KEY) */
   ai?: boolean;
+  /** jednostavni način: bez VRA taba */
+  napredno?: boolean;
 }) {
   const [tab, setTabState] = useState<Tab>('ndvi');
   // VRA se montira tek kad se prvi put otvori (bez nepotrebnih Sentinel poziva), a onda ostaje
@@ -49,6 +52,7 @@ export function CesticaPanel({
     postaviAktivni(t === 'vra' ? 'vra' : 'ndvi');
   };
   const [brojOperacija, setBrojOperacija] = useState<number | null>(null);
+  const tabovi: Tab[] = ['ndvi', ...(napredno ? (['vra'] as const) : []), 'operacije', ...(ai ? (['savjet'] as const) : [])];
   const onBroj = useCallback((n: number) => setBrojOperacija(n), []);
 
   return (
@@ -77,14 +81,14 @@ export function CesticaPanel({
       </div>
 
       <div hidden={sazeto} className="flex flex-col gap-3">
-      <div className={`grid ${ai ? 'grid-cols-4' : 'grid-cols-3'} border-b border-zinc-200`} role="tablist" aria-label="Prikaz čestice">
-        {(ai ? (['ndvi', 'vra', 'operacije', 'savjet'] as const) : (['ndvi', 'vra', 'operacije'] as const)).map((t) => (
+      <div className={`grid ${tabovi.length === 4 ? 'grid-cols-4' : tabovi.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} border-b border-zinc-200`} role="tablist" aria-label="Prikaz čestice">
+        {tabovi.map((t) => (
           <button
             key={t}
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`-mb-px min-h-11 border-b-2 ${ai ? 'text-[13px]' : 'text-sm'} font-semibold ${tab === t ? 'border-list-600 text-list-700' : 'border-transparent text-zinc-500'}`}
+            className={`-mb-px min-h-11 border-b-2 ${tabovi.length === 4 ? 'text-[13px]' : 'text-sm'} font-semibold ${tab === t ? 'border-list-600 text-list-700' : 'border-transparent text-zinc-500'}`}
           >
             {t === 'ndvi' ? 'Satelit' : t === 'vra' ? 'VRA' : t === 'savjet' ? 'Savjet' : `Operacije${brojOperacija !== null ? ` (${brojOperacija})` : ''}`}
           </button>

@@ -67,3 +67,30 @@ export async function obrisiOperaciju(id: unknown): Promise<{ ok: true } | { ok:
     return { ok: false, poruka: 'Brisanje nije uspjelo.' };
   }
 }
+
+const ViseUlaz = z.object({
+  gospodarstvoId: z.uuid(),
+  stavke: z.array(z.object({ cesticaId: z.uuid(), operacija: NovaOperacijaSchema })).min(1).max(300),
+});
+
+export type ViseOdgovor = { ok: true; spremljeno: number; neuspjelo: string[] } | { ok: false; poruka: string };
+
+/**
+ * Ista radnja na više čestica odjednom (jednostavni način: „+ Radnja” → odaberi čestice).
+ * Svaka čestica ima svoj localId → ponovljeno slanje ne stvara duplikate. Neuspjele čestice se vraćaju po id-u.
+ */
+export async function dodajOperacijeVise(ulaz: unknown): Promise<ViseOdgovor> {
+  const p = ViseUlaz.safeParse(ulaz);
+  if (!p.success) return { ok: false, poruka: p.error.issues[0]?.message ?? 'Podaci nisu ispravni.' };
+  const { gospodarstvoId, stavke } = p.data;
+  const neuspjelo: string[] = [];
+  let spremljeno = 0;
+  for (const st of stavke) {
+    const r = await dodajOperaciju({ cesticaId: st.cesticaId, gospodarstvoId, operacija: st.operacija });
+    if (r.ok) spremljeno++;
+    else if (spremljeno === 0 && r.poruka.startsWith('Nemaš pravo')) return { ok: false, poruka: r.poruka };
+    else neuspjelo.push(st.cesticaId);
+  }
+  revalidatePath(`/gospodarstvo/${gospodarstvoId}`);
+  return { ok: true, spremljeno, neuspjelo };
+}

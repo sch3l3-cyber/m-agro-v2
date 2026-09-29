@@ -44,10 +44,10 @@ bliži konkurent — razlikujemo se: besplatno, satelit uključen, jednostavno, 
 
 Redoslijed je bitan: svaka faza stvara uvjete za sljedeću. „Vrata” = uvjet za prelazak dalje.
 
-### Faza 6 — Jednostavno (≈ 1–2 tjedna rada)
-- Postavka računa „Jednostavni / Napredni način” (zadano jednostavni; admin i postojeći korisnik po izboru).
-- Početna gospodarstva: kulture → broj čestica i ha → popis čestica s NDVI semaforom.
-- „+ Radnja” u 3 dodira (čestica ili više čestica odjednom → vrsta → količina iz kataloga), bez signala.
+### Faza 6 — Jednostavno (≈ 1–2 tjedna rada) — 🟡 u tijeku
+- ✅ Postavka računa „Jednostavni / Napredni način” (novi računi jednostavni, postojeći napredni; Račun → Način rada).
+- ✅ Tab „Pregled”: kulture → broj čestica i ha → popis s NDVI semaforom (`ndviSemafor`, packages/domain) i zadnjom radnjom; „Traži pažnju” filtar.
+- ✅ „+ Upiši radnju” na više čestica odjednom (odabir po kulturi, „odaberi sve”), bez signala; katalog dolazi u Fazi 7.
 - „Moje gospodarenje”: potrošnja po kulturi i sezoni, radnje po mjesecima (iz postojećih podataka).
 - Onboarding: uvoz ARKOD-a uz upute sa slikama; prazna stanja koja objašnjavaju sljedeći korak.
 - **Vrata:** 3–5 testnih farmera upiše radnje bez pomoći; tvoja ocjena na mobitelu.
