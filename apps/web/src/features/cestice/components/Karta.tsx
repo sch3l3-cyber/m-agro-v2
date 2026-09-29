@@ -2,7 +2,7 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useCallback, useEffect, useRef } from 'react';
-import { addProtocol, GeolocateControl, Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
+import { addProtocol, GeolocateControl, Map as MlMap, NavigationControl, Popup, setWorkerUrl, type GeoJSONSource, type LngLatBoundsLike, type MapLayerMouseEvent, type MapMouseEvent, type StyleSpecification } from 'maplibre-gl';
 import type { Cestica } from '@/lib/db';
 import { useMapStore, type Overlay } from '@/stores/mapStore';
 import { bojaCestice } from '../boje';
@@ -142,6 +142,21 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
       map.on('click', 'cestice-fill', (e: MapLayerMouseEvent) => {
         const cid = e.features?.[0]?.properties?.cid;
         if (typeof cid === 'string') odaberi(cid, 'karta');
+        // VRA prikaz: dodir pokazuje zonu i dozu tog mjesta (piksel iz istog niza kao tablica)
+        const st = useMapStore.getState();
+        const v = st.vraInfo;
+        if (st.aktivni !== 'vra' || !v || cid !== st.odabranaId) return;
+        const [w, s, ee, n] = v.bbox;
+        const px = Math.floor(((e.lngLat.lng - w) / (ee - w)) * v.w);
+        const py = Math.floor(((n - e.lngLat.lat) / (n - s)) * v.h);
+        if (px < 0 || py < 0 || px >= v.w || py >= v.h) return;
+        const z = v.zone[py * v.w + px] ?? -1;
+        if (z < 0) return;
+        const doza = (v.doze[z] ?? 0).toLocaleString('hr-HR', { maximumFractionDigits: 1 });
+        const el = document.createElement('div');
+        el.style.font = '600 13px system-ui';
+        el.textContent = `Zona ${z + 1} · ${v.gnojivo || 'gnojivo'} ${doza} kg/ha`;
+        new Popup({ closeButton: false, offset: 8 }).setLngLat(e.lngLat).setDOMContent(el).addTo(map);
       });
       map.on('click', (e: MapMouseEvent) => {
         if (map.queryRenderedFeatures(e.point, { layers: ['cestice-fill'] }).length === 0) odaberi(null, 'karta');

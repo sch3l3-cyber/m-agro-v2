@@ -46,7 +46,27 @@ pnpm db:test                                   # RLS testovi (treba Docker + Sup
 | Worker sentinel | `m-agro-v2-sentinel` | |
 | Supabase | `m-agro-v2-dev` (klgdptmjnwvlzygneqcf) | `magro baza`, `agro aplikacija baza` (v1) |
 
-## Stanje (2026-09-28)
-- Web: https://m-agro-v2-web.sch3l3.workers.dev — deploy preko CI-ja radi.
-- Email predlošci (ADR-0004) se NE mogu mijenjati bez vlastitog SMTP-a → Faza 1: Resend + hrvatski predlošci.
-  Do tada Supabase šalje zadane (engleske) emailove s PKCE linkom; potvrda radi, cross-device prijava ide ručno.
+## 4. Sentinel worker — tajne (Cloudflare → Workers & Pages → m-agro-v2-sentinel → Settings → Variables and Secrets)
+| Tip | Ime | Odakle |
+|---|---|---|
+| Secret | `SENTINEL_CLIENT_ID` | Copernicus (shapps.dataspace.copernicus.eu) → User settings → OAuth clients → Create (flow: *Client Credentials*) |
+| Secret | `SENTINEL_CLIENT_SECRET` | isto (prikazuje se samo jednom) |
+| Secret | `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys → Secret keys → `sentinel-worker` |
+| Variable (opcionalno) | `SENTINEL_MJESECNI_LIMIT` | globalni mjesečni limit jedinica (zadano 20000; isti broj je u `apps/web/src/app/(app)/admin/page.tsx`) |
+
+Tajne ostaju pri svakom deployu (wrangler ih ne briše).
+
+## 5. Email (Resend SMTP) — napravljeno 2026-09-28
+Supabase → Authentication → Emails → SMTP Settings: host `smtp.resend.com`, port `465`, user `resend`,
+lozinka = Resend API ključ, pošiljatelj `noreply@m-agro.hr` (domena m-agro.hr verificirana u Resendu).
+Predlošci: `supabase/templates/potvrda.html` i `reset.html` (naslov bez duge crtice — Supabase je ne sprema).
+
+## 6. Isporuka iz Cowork sesije (bez naredbenog retka)
+1. Claude sprema `m-agro-v2.bundle` u `Desktop\ndvi cowork`.
+2. `automatski-deploy.bat` (pokrenut jednom, prozor ostaje otvoren) primijeti novi paket, napravi
+   `git pull --ff-only` iz bundlea u `m-agro-v2\` i `git push` na GitHub.
+3. GitHub Actions: gitleaks → typecheck/lint/testovi/build + pgTAP → migracije (`supabase db push`) → deploy oba workera.
+Ručna alternativa: dvoklik na `posalji-promjene.bat`. **Migracije primjenjuje SAMO CI** (vidi CLAUDE.md).
+
+## Stanje
+Vidi `docs/STANJE.md`.

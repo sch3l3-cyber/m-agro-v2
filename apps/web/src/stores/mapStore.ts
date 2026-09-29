@@ -13,6 +13,16 @@ export interface Overlay {
 
 export type VlasnikSloja = 'ndvi' | 'vra';
 
+/** Za dodir na kartu u VRA prikazu: isti niz zona kao tablica (lekcija #12). */
+export interface VraInfo {
+  bbox: [number, number, number, number];
+  w: number;
+  h: number;
+  zone: Int8Array;
+  doze: number[];
+  gnojivo: string;
+}
+
 interface MapState {
   odabranaId: string | null;
   izvor: 'karta' | 'lista' | null;
@@ -25,6 +35,8 @@ interface MapState {
   aktivni: VlasnikSloja;
   postaviSloj: (vlasnik: VlasnikSloja, o: Overlay | null) => void;
   postaviAktivni: (v: VlasnikSloja) => void;
+  vraInfo: VraInfo | null;
+  postaviVraInfo: (v: VraInfo | null) => void;
   /** px karte odozdo prekrivenih mobilnom pločom — karta centrira česticu iznad nje */
   donjiRub: number;
   postaviDonjiRub: (px: number) => void;
@@ -46,6 +58,8 @@ export const useMapStore = create<MapState>()((set, get) => ({
     set({ slojevi, overlay: slojevi[get().aktivni] });
   },
   postaviAktivni: (v) => set({ aktivni: v, overlay: get().slojevi[v] }),
+  vraInfo: null,
+  postaviVraInfo: (v) => set({ vraInfo: v }),
   donjiRub: 0,
   postaviDonjiRub: (px) => {
     if (Math.abs(px - get().donjiRub) > 2) set({ donjiRub: px });

@@ -128,6 +128,14 @@ export function VraTab({ cestica, gospodarstvoId, smijeUpisivati }: { cestica: C
   }, [zonaPoPikselu, n]);
   useEffect(() => () => postaviSloj('vra', null), [postaviSloj]);
 
+  // podaci za dodir na kartu (zona + doza) — iz istog plana kao tablica
+  const postaviVraInfo = useMapStore((s) => s.postaviVraInfo);
+  useEffect(() => {
+    if (!plan || rs?.status !== 'ok') return;
+    postaviVraInfo({ bbox, w: rs.data.w, h: rs.data.h, zone: plan.zonaPoPikselu, doze: plan.zone.map((z) => z.dozaHa), gnojivo });
+  }, [plan, rs, bbox, gnojivo, postaviVraInfo]);
+  useEffect(() => () => postaviVraInfo(null), [postaviVraInfo]);
+
   // upis kao operacija
   const [upis, setUpis] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
