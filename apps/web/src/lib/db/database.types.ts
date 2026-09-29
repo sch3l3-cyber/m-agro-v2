@@ -272,6 +272,12 @@ export type Database = {
           },
         ];
       };
+      zahtjevi_uvoza: {
+        Row: { id: string; gospodarstvo_id: string; mibpg: string; status: string; dodano: number; created_at: string; rijeseno_at: string | null };
+        Insert: { id?: string; gospodarstvo_id: string; mibpg: string; status?: string; dodano?: number; created_at?: string; rijeseno_at?: string | null };
+        Update: { id?: string; gospodarstvo_id?: string; mibpg?: string; status?: string; dodano?: number; created_at?: string; rijeseno_at?: string | null };
+        Relationships: [];
+      };
       profiles: {
         Row: { created_at: string; email: string; id: string; ime_prezime: string | null; nacin: string; updated_at: string };
         Insert: { created_at?: string; email: string; id: string; ime_prezime?: string | null; updated_at?: string };
@@ -291,6 +297,18 @@ export type Database = {
       };
       ai_evidentiraj: {
         Args: { p_usd: number };
+        Returns: undefined;
+      };
+      admin_zahtjevi_uvoza: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: string; gospodarstvo_id: string; gospodarstvo: string; email: string | null; mibpg: string; status: string; dodano: number; created_at: string; cestica: number }[];
+      };
+      admin_dodaj_arkod_cesticu: {
+        Args: { p_zahtjev: string; p_cestica: Json };
+        Returns: boolean;
+      };
+      admin_zahtjev_gotov: {
+        Args: { p_zahtjev: string };
         Returns: undefined;
       };
       arkod_po_brojevima: {

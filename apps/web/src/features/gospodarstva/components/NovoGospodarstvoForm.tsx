@@ -12,7 +12,10 @@ export function NovoGospodarstvoForm() {
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field id="naziv" name="naziv" label="Naziv gospodarstva" placeholder="npr. OPG Horvat" required error={fe?.naziv} />
-      <Field id="mibpg" name="mibpg" label="MIBPG (neobavezno)" inputMode="numeric" error={fe?.mibpg} />
+      <div className="flex flex-col gap-1">
+        <Field id="mibpg" name="mibpg" label="MIBPG" inputMode="numeric" error={fe?.mibpg} />
+        <p className="text-sm text-zinc-600">Upiši MIBPG i tvoje ARKOD čestice učitat ćemo mi, u roku 24 sata. Bez MIBPG-a čestice dodaješ sam dodirom na karti.</p>
+      </div>
       {state.status === 'error' && <p role="alert" className="text-sm text-red-700">{state.message}</p>}
       <Button type="submit" disabled={pending}>{pending ? 'Spremam…' : 'Kreiraj gospodarstvo'}</Button>
     </form>

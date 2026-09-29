@@ -71,6 +71,9 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
   Tjedna provjera za 25 000 čestica ≈ 3,5 h usporenog rada u GitHub Actions — izvedivo, ali prije toga zatražiti WFS pristup.
 - ✖ „Dodaj cijelo gospodarstvo” preko `jpaid`-a — ukinuto: `jpaid` je prostorna grupa, ne gospodarstvo (ADR-0011 ispravak).
   Uvoz po MIBPG-u traži podatke/sučelje APPRRR-a (vlasnik razgovara s agencijom).
+- ✅ **Učitavanje po MIBPG-u (poluautomatski):** korisnik upiše MIBPG pri stvaranju gospodarstva → poruka „čestice u roku 24 h” →
+  zahtjev u /admin → admin zalijepi tablicu iz ARKOD preglednika → čestice idu ravno u korisnikovo gospodarstvo. Kad APPRRR
+  ponudi službeni servis MIBPG → ARKOD brojevi, isti red obrađuje automatika (`zahtjevi_uvoza`).
 - ✅ „Imaš popis ARKOD brojeva? Zalijepi ga” — zamjena za Python generator + QGIS (brojevi iz ARKOD preglednika, pretraga po MIBPG-u).
 - ✅ Tjedni ARKOD punjač (istočna Hrvatska, 361 450 čestica) → `private.arkod_cestice` za regionalne agregate i budući sloj.
 - **Nadogradnja (ADR-0011):** vlastiti ARKOD sloj iz javnog `land_parcels.gpkg` (PMTiles na R2)

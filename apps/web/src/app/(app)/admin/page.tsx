@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDb } from '@/lib/db';
 import { ProbaSentryLoader } from '@/components/SentryLoader';
+import { ZahtjeviUvoza } from '@/features/admin/ZahtjeviUvoza';
 
 export const metadata: Metadata = { title: 'Admin' };
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ const AKCIJE: Record<string, string> = {
 
 export default async function Page() {
   const p = await getDb().adminPregled(LIMIT_KVOTE);
+  const zahtjevi = await getDb().arkod.adminZahtjevi().catch(() => []);
   if (!p) notFound(); // ne otkrivamo da stranica postoji
   const udio = p.kvota.limit ? p.kvota.potroseno / p.kvota.limit : 0;
   const upozorenje = udio >= 0.8;
@@ -75,6 +77,11 @@ export default async function Page() {
               {opis && <p className="text-xs text-zinc-500">{opis}</p>}
             </div>
           ))}
+        </section>
+
+        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200" aria-label="Zahtjevi za učitavanje čestica">
+          <h2 className="mb-2 font-semibold">Zahtjevi za učitavanje čestica ({zahtjevi.filter((z) => z.status === 'ceka').length})</h2>
+          <ZahtjeviUvoza zahtjevi={zahtjevi} />
         </section>
 
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200" aria-label="Praćenje grešaka">

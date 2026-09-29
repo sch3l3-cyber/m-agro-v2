@@ -29,11 +29,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const gosp = await db.gospodarstva.get(id, user.id);
   if (!gosp) notFound();
   const { danas, pomak } = datumi();
-  const [cestice, nacin, ndvi, operacije] = await Promise.all([
+  const [cestice, nacin, ndvi, operacije, zahtjev] = await Promise.all([
     db.cestice.listByGospodarstvo(id),
     db.profil.nacin(user.id),
     db.cestice.ndviNedavno(id, pomak(50)).catch(() => ({}) as Record<string, { datum: string; mean: number }[]>),
     db.operacije.listByGospodarstvo(id, pomak(365), danas).catch(() => []),
+    db.arkod.zahtjev(id).catch(() => null),
   ]);
   const smijeUvoz = imaOvlast(gosp.uloga, 'clan');
 
@@ -75,6 +76,17 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         </div>
       </div>
 
+      {zahtjev?.status === 'ceka' && (
+        <p role="status" className="flex-shrink-0 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          Zaprimili smo MIBPG {zahtjev.mibpg}. Tvoje ARKOD čestice bit će učitane u roku 24 sata — ne moraš ništa raditi.
+          {cestice.length === 0 && ' Ako želiš odmah, možeš ih dodati i sam (dodirom na karti).'}
+        </p>
+      )}
+      {zahtjev?.status === 'gotovo' && zahtjev.rijesenoAt && zahtjev.rijesenoAt > pomak(7) && (
+        <p role="status" className="flex-shrink-0 bg-list-500/10 px-4 py-2 text-sm text-list-700">
+          Učitano {zahtjev.dodano} ARKOD čestica za MIBPG {zahtjev.mibpg}. Provjeri popis i postavi kulture.
+        </p>
+      )}
       {uvoz && (
         <p role="status" className="flex-shrink-0 bg-list-500/10 px-4 py-2 text-sm text-list-700">
           Uvoz gotov: {uvoz.slice(0, 200)}.

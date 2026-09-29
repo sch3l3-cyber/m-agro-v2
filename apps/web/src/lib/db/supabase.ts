@@ -248,6 +248,29 @@ export const supabaseDb: DbClient = {
   },
 
   arkod: {
+    async zahtjev(gospodarstvoId) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.from('zahtjevi_uvoza').select('mibpg, status, dodano, created_at, rijeseno_at').eq('gospodarstvo_id', gospodarstvoId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) fail('arkod.zahtjev', error);
+      return data ? { mibpg: data.mibpg, status: data.status === 'gotovo' ? 'gotovo' : 'ceka', dodano: data.dodano, createdAt: data.created_at, rijesenoAt: data.rijeseno_at } : null;
+    },
+    async adminZahtjevi() {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.rpc('admin_zahtjevi_uvoza');
+      if (error) fail('arkod.adminZahtjevi', error);
+      return (data ?? []).map((r) => ({ id: r.id, gospodarstvoId: r.gospodarstvo_id, gospodarstvo: r.gospodarstvo, email: r.email, mibpg: r.mibpg, status: r.status === 'gotovo' ? 'gotovo' : 'ceka', dodano: r.dodano, createdAt: r.created_at, cestica: r.cestica }));
+    },
+    async adminDodaj(zahtjevId, c) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.rpc('admin_dodaj_arkod_cesticu', { p_zahtjev: zahtjevId, p_cestica: c as unknown as Json });
+      if (error) fail('arkod.adminDodaj', error);
+      return data === true;
+    },
+    async adminGotovo(zahtjevId) {
+      const sb = await supabaseForRequest();
+      const { error } = await sb.rpc('admin_zahtjev_gotov', { p_zahtjev: zahtjevId });
+      if (error) fail('arkod.adminGotovo', error);
+    },
     async poBrojevima(ids) {
       const sb = await supabaseForRequest();
       const { data, error } = await sb.rpc('arkod_po_brojevima', { p_ids: ids });

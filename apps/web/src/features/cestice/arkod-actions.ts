@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { arkodBrojeviIzTeksta, arkodUpitUrl, lpisNaziv, parsirajArkod, UrediCesticuSchema, type ArkodCestica } from '@m-agro/domain';
+import { arkodBrojeviIzTeksta, lpisNaziv, UrediCesticuSchema, type ArkodCestica } from '@m-agro/domain';
+import { arkodUTocki } from '@/lib/arkod/wms';
 import { getAuth } from '@/lib/auth';
 import { DbError, getDb } from '@/lib/db';
 
@@ -14,11 +15,7 @@ const Tocka = z.object({ gospodarstvoId: z.uuid(), lon: z.number().min(13).max(2
 
 const PRAG_ISTA = 0.5; // > 50 % preklapanja = ista čestica
 
-async function dohvati(lon: number, lat: number): Promise<ArkodCestica | null> {
-  const r = await fetch(arkodUpitUrl(lon, lat), { signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } });
-  if (!r.ok) throw new Error(`ARKOD ${r.status}`);
-  return parsirajArkod(await r.json());
-}
+const dohvati = arkodUTocki;
 
 export type ArkodPregled =
   | { ok: true; nema: true }

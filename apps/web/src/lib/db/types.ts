@@ -126,7 +126,26 @@ export interface ArkodSazetak {
   naziv: string | null;
 }
 
+export interface ZahtjevUvoza {
+  id: string;
+  gospodarstvoId: string;
+  gospodarstvo: string;
+  email: string | null;
+  mibpg: string;
+  status: 'ceka' | 'gotovo';
+  dodano: number;
+  createdAt: string;
+  cestica: number;
+}
+
 export interface ArkodRepo {
+  /** Zadnji zahtjev za učitavanje čestica tog gospodarstva (RLS: član). */
+  zahtjev(gospodarstvoId: string): Promise<{ mibpg: string; status: 'ceka' | 'gotovo'; dodano: number; createdAt: string; rijesenoAt: string | null } | null>;
+  /** Admin: zahtjevi koji čekaju + zadnji riješeni. 42501 za ne-admina. */
+  adminZahtjevi(): Promise<ZahtjevUvoza[]>;
+  /** Admin: dodaj jednu česticu u zatraženo gospodarstvo; false = duplikat. */
+  adminDodaj(zahtjevId: string, c: { arkodId: string; naziv: string; landUseId: number | null; atributi: Record<string, unknown>; geom: RawMultiPolygon }): Promise<boolean>;
+  adminGotovo(zahtjevId: string): Promise<void>;
   /** Javni sažetak ARKOD čestica po brojevima (≤ 500; 20 upita/dan; audit). */
   poBrojevima(ids: number[]): Promise<ArkodSazetak[]>;
   /** ARKOD brojevi koje gospodarstvo već ima. */
