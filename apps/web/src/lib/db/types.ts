@@ -110,6 +110,8 @@ export interface AdminPregled {
 export interface DbClient {
   /** null = korisnik nije admin (ili je admin s MFA-om bez koda) */
   adminPregled(limitKvote: number): Promise<AdminPregled | null>;
+  /** Trajno briše račun prijavljenog korisnika i gospodarstva koja vodi sam. Baca DbError s porukom za korisnika. */
+  obrisiMojRacun(): Promise<void>;
   gospodarstva: GospodarstvaRepo;
   cestice: CesticeRepo;
   operacije: OperacijeRepo;

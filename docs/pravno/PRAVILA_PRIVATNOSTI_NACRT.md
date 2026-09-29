@@ -41,7 +41,7 @@ Ne prikupljamo podatke o lokaciji uređaja, kontakte, fotografije ni podatke za 
 
 ## 5. Koliko dugo čuvamo podatke
 - Podatke računa, čestica i operacija dok je račun aktivan.
-- Nakon zahtjeva za brisanje: brisanje u roku od [[30]] dana.
+- Nakon brisanja računa u aplikaciji: odmah.
 - Zapise o greškama: najviše 30 dana (besplatni plan Sentryja).
 - Sigurnosne kopije baze: [[prema planu Supabasea, npr. 7 dana]], nakon čega nestaju i obrisani podaci.
 
@@ -49,7 +49,7 @@ Ne prikupljamo podatke o lokaciji uređaja, kontakte, fotografije ni podatke za 
 Imaš pravo na pristup, ispravak, brisanje, ograničenje obrade, prenosivost i prigovor.
 - **Izvoz svih podataka**: u aplikaciji, Račun → „Preuzmi moje podatke” (JSON).
 - **Ispravak**: čestice i operacije uređuješ sam u aplikaciji.
-- **Brisanje računa**: [[ovisno o odluci iz koraka 8 — gumb u aplikaciji ILI zahtjev na email iz točke 1]].
+- **Brisanje računa**: u aplikaciji, Račun → „Obriši račun”. Brisanje je trenutno i trajno (uz potvrdu upisom emaila); iz sigurnosnih kopija nestaje nakon isteka njihova roka.
 - Prigovor možeš podnijeti **Agenciji za zaštitu osobnih podataka (AZOP)**, azop.hr.
 
 ## 7. Sigurnost
@@ -74,6 +74,6 @@ O bitnim izmjenama obavijestit ćemo korisnike emailom ili porukom u aplikaciji.
 
 ### Za pregled (Ivan)
 - [ ] Popuniti `[[…]]` (naziv, adresa, OIB, kontakt email, mjesto suda).
-- [ ] Odluka o brisanju računa (korak 8) → točka 6.
+- [x] Brisanje računa (korak 8): gumb u aplikaciji.
 - [ ] Supabase backup: besplatni plan nema automatske dnevne kopije — uskladiti točku 5 s odlukom iz koraka 9.
 - [ ] Po želji pregled pravnika prije pozivanja testera.

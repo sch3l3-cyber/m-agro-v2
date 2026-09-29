@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import type { z } from 'zod';
 import { NovaLozinkaSchema, PrijavaSchema, RegistracijaSchema, ResetZahtjevSchema } from '@m-agro/domain';
 import { getAuth, type AuthErrorCode } from '@/lib/auth';
+import { DbError, getDb } from '@/lib/db';
 import { publicEnv } from '@/lib/env';
 import { type FormState, safeNext } from './state';
 
@@ -113,4 +114,24 @@ export async function postaviNovuLozinku(_: FormState, fd: FormData): Promise<Fo
 export async function odjava(): Promise<void> {
   await getAuth().signOut();
   redirect('/prijava');
+}
+
+/** Trajno brisanje vlastitog računa. Potvrda = upisani vlastiti email. */
+export async function obrisiRacun(potvrda: unknown): Promise<{ ok: true } | { ok: false; poruka: string }> {
+  const auth = getAuth();
+  const user = await auth.getUser();
+  if (!user) return { ok: false, poruka: 'Nisi prijavljen.' };
+  if (typeof potvrda !== 'string' || potvrda.trim().toLowerCase() !== (user.email ?? '').toLowerCase()) {
+    return { ok: false, poruka: 'Za potvrdu upiši točno svoj email.' };
+  }
+  try {
+    await getDb().obrisiMojRacun();
+  } catch (e) {
+    if (e instanceof DbError && (e.code === 'P0001' || e.code === '42501')) {
+      return { ok: false, poruka: e.message.replace(/^obrisiMojRacun: /, '') };
+    }
+    throw e;
+  }
+  await auth.signOut();
+  return { ok: true };
 }

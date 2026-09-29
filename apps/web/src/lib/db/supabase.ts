@@ -25,6 +25,12 @@ export const supabaseDb: DbClient = {
     return data as unknown as AdminPregled;
   },
 
+  async obrisiMojRacun() {
+    const sb = await supabaseForRequest();
+    const { error } = await sb.rpc('obrisi_moj_racun');
+    if (error) fail('obrisiMojRacun', error);
+  },
+
   gospodarstva: {
     async listMine(userId) {
       const sb = await supabaseForRequest();

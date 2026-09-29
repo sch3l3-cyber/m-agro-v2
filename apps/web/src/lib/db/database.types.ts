@@ -280,6 +280,10 @@ export type Database = {
         Args: { p_limit_kvote?: number };
         Returns: Json;
       };
+      obrisi_moj_racun: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
+      };
       uvezi_cestice: {
         Args: { p_gospodarstvo: string; p_cestice: Json; p_mod: string };
         Returns: Json;

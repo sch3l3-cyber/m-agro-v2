@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getAuth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { MfaPostavke } from '@/features/auth/components/MfaPostavke';
+import { ObrisiRacun } from '@/features/auth/components/ObrisiRacun';
 
 export const metadata: Metadata = { title: 'Račun' };
 
@@ -41,6 +42,12 @@ export default async function Page() {
           <h2 className="mb-3 font-semibold">Dvofaktorska prijava (2FA)</h2>
           <MfaPostavke ukljuceno={!!faktor} factorId={faktor?.id ?? null} />
         </section>
+        {!admin && (
+          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-red-200">
+            <h2 className="mb-3 font-semibold">Brisanje računa</h2>
+            <ObrisiRacun email={user.email ?? ''} />
+          </section>
+        )}
       </div>
     </div>
   );

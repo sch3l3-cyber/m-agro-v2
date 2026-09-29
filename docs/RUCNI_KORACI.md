@@ -43,9 +43,8 @@ M-AGRO → gore desno tvoj email (**Račun**) → *Uključi dvofaktorsku prijavu
 Nacrt je napisan: `docs/pravno/PRAVILA_PRIVATNOSTI_NACRT.md` (GDPR: koji podaci, gdje se čuvaju — Supabase EU, Cloudflare; pravo na izvoz koji već postoji i na brisanje).
 Ti ga pregledaš/odobriš (po potrebi i pravnik) prije pozivanja testera.
 
-## 8. Brisanje računa (odluka)
-Za potpuno brisanje korisnika treba Supabase *secret* ključ i u web workeru (kao kod sentinela). Alternativa: zahtjev za brisanje
-ide tebi emailom pa ga obrišeš u Supabase dashboardu. Reci što ti je draže.
+## 8. Brisanje računa ✅ riješeno 29. 9.
+Gumb u Račun → „Obriši račun” (funkcija u bazi, bez dodatnog ključa). Admin račun se iz aplikacije ne može obrisati.
 
 ## 9. Probni restore backupa (kasnije, prije testera)
 Supabase → Database → Backups: besplatni plan ima dnevne backupe 7 dana; probni restore je na Pro planu —
