@@ -75,3 +75,24 @@ export async function obrisiCesticu(ulaz: unknown): Promise<AkcijaOdgovor> {
     return { ok: false, poruka: 'Brisanje nije uspjelo. Pokušaj ponovo.' };
   }
 }
+
+const KulturaViseUlaz = z.object({
+  gospodarstvoId: z.uuid(),
+  cesticeIds: z.array(z.uuid()).min(1).max(1000),
+  kultura: UrediCesticuSchema.shape.kultura,
+});
+
+/** Jednostavni način: ista kultura na više čestica odjednom (npr. „sve oko Ciglane su pšenica”). */
+export async function postaviKulturuVise(ulaz: unknown): Promise<{ ok: true; izmijenjeno: number } | { ok: false; poruka: string }> {
+  const p = KulturaViseUlaz.safeParse(ulaz);
+  if (!p.success) return { ok: false, poruka: p.error.issues[0]?.message ?? 'Podaci nisu ispravni.' };
+  try {
+    const izmijenjeno = await getDb().cestice.postaviKulturuVise(p.data.cesticeIds, p.data.kultura);
+    if (izmijenjeno === 0) return { ok: false, poruka: 'Nemaš pravo mijenjati ove čestice.' };
+    revalidatePath(`/gospodarstvo/${p.data.gospodarstvoId}`);
+    return { ok: true, izmijenjeno };
+  } catch (err) {
+    console.error('[cestice] kultura više', err);
+    return { ok: false, poruka: 'Spremanje nije uspjelo. Pokušaj ponovo.' };
+  }
+}

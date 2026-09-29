@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Semafor } from '@m-agro/domain';
 import type { Cestica } from '@/lib/db';
 import { ParceleView } from '@/features/cestice/components/ParceleView';
@@ -18,6 +18,7 @@ export function GospodarstvoPrikaz({
   ai,
   napredno,
   pocetni,
+  pocetnoDodavanje = false,
   semafori,
   zadnjeRadnje,
 }: {
@@ -28,12 +29,19 @@ export function GospodarstvoPrikaz({
   ai: boolean;
   napredno: boolean;
   pocetni: Prikaz;
+  /** prazno gospodarstvo: odmah „Dodaj čestice” na karti */
+  pocetnoDodavanje?: boolean;
   semafori: Record<string, Semafor>;
   zadnjeRadnje: Record<string, ZadnjaRadnja>;
 }) {
   const [prikaz, setPrikaz] = useState<Prikaz>(pocetni);
   const [kartaOtvorena, setKartaOtvorena] = useState(pocetni === 'karta');
   const odaberi = useMapStore((s) => s.odaberi);
+  const postaviDodavanje = useMapStore((s) => s.postaviDodavanje);
+
+  useEffect(() => {
+    if (pocetnoDodavanje) useMapStore.getState().postaviDodavanje(true);
+  }, [pocetnoDodavanje]);
 
   const idi = (p: Prikaz) => {
     setPrikaz(p);
@@ -65,6 +73,10 @@ export function GospodarstvoPrikaz({
           onOtvori={(id) => {
             odaberi(id, 'lista');
             idi('karta');
+          }}
+          onDodaj={() => {
+            idi('karta');
+            postaviDodavanje(true);
           }}
         />
       )}

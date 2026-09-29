@@ -142,7 +142,13 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
           'line-width': ['case', ['boolean', ['feature-state', 'odabrana'], false], 4, 1.5],
         },
       });
+      // Pregled ARKOD čestice koja se nudi za dodavanje (narančasti obrub)
+      map.addSource('arkod-pregled', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({ id: 'arkod-pregled-fill', type: 'fill', source: 'arkod-pregled', paint: { 'fill-color': '#f97316', 'fill-opacity': 0.25 } });
+      map.addLayer({ id: 'arkod-pregled-obrub', type: 'line', source: 'arkod-pregled', paint: { 'line-color': '#f97316', 'line-width': 3 } });
+
       map.on('click', 'cestice-fill', (e: MapLayerMouseEvent) => {
+        if (useMapStore.getState().dodavanje) return; // obrađuje opći klik ispod
         const cid = e.features?.[0]?.properties?.cid;
         if (typeof cid === 'string') odaberi(cid, 'karta');
         // VRA prikaz: dodir pokazuje zonu i dozu tog mjesta (piksel iz istog niza kao tablica)
@@ -162,10 +168,12 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
         new Popup({ closeButton: false, offset: 8 }).setLngLat(e.lngLat).setDOMContent(el).addTo(map);
       });
       map.on('click', (e: MapMouseEvent) => {
+        const st = useMapStore.getState();
+        if (st.dodavanje) return st.postaviDodir(e.lngLat.lng, e.lngLat.lat);
         if (map.queryRenderedFeatures(e.point, { layers: ['cestice-fill'] }).length === 0) odaberi(null, 'karta');
       });
-      map.on('mouseenter', 'cestice-fill', () => (map.getCanvas().style.cursor = 'pointer'));
-      map.on('mouseleave', 'cestice-fill', () => (map.getCanvas().style.cursor = ''));
+      map.on('mouseenter', 'cestice-fill', () => (map.getCanvas().style.cursor = useMapStore.getState().dodavanje ? 'crosshair' : 'pointer'));
+      map.on('mouseleave', 'cestice-fill', () => (map.getCanvas().style.cursor = useMapStore.getState().dodavanje ? 'crosshair' : ''));
       postaviPodatke(map, zadnjeCestice.current);
       // Odabir/snimka mogli su stići PRIJE nego je karta bila spremna (brz klik nakon otvaranja) → preuzmi stanje
       const st = useMapStore.getState();
@@ -274,6 +282,21 @@ export default function Karta({ cestice }: { cestice: Cestica[] }) {
         const map = mapRef.current;
         if (!map || !map.getSource('cestice')) return;
         primijeniOverlay(map, st.overlay);
+      }),
+    [],
+  );
+
+  // „Dodaj čestice”: obris ponuđene ARKOD čestice + križić kao pokazivač
+  useEffect(
+    () =>
+      useMapStore.subscribe((st, prev) => {
+        const map = mapRef.current;
+        if (!map || !map.getSource('arkod-pregled')) return;
+        if (st.pregledArkod !== prev.pregledArkod) {
+          const src = map.getSource('arkod-pregled') as GeoJSONSource;
+          src.setData(st.pregledArkod ? { type: 'Feature', properties: {}, geometry: st.pregledArkod } : { type: 'FeatureCollection', features: [] });
+        }
+        if (st.dodavanje !== prev.dodavanje) map.getCanvas().style.cursor = st.dodavanje ? 'crosshair' : '';
       }),
     [],
   );

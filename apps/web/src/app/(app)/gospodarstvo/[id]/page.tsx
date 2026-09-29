@@ -81,22 +81,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         </p>
       )}
 
-      {cestice.length === 0 ? (
+      {cestice.length === 0 && !smijeUvoz ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <div className="max-w-sm text-center">
-            <p className="mb-2 text-lg font-semibold">Još nema čestica</p>
-            <p className="mb-5 text-zinc-600">
-              Uvezi GeoJSON iz QGIS generatora (ARKOD) ili izvoz iz Google Eartha. Koordinate se pretvaraju automatski.
-            </p>
-            {smijeUvoz && (
-              <Link
-                href={`/gospodarstvo/${id}/uvoz`}
-                className="inline-flex min-h-12 items-center rounded-lg bg-list-600 px-5 font-semibold text-white hover:bg-list-700"
-              >
-                Uvezi čestice
-              </Link>
-            )}
-          </div>
+          <p className="max-w-sm text-center text-zinc-600">Ovo gospodarstvo još nema čestica.</p>
         </div>
       ) : (
         <GospodarstvoPrikaz
@@ -106,7 +93,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           smijeBrisati={imaOvlast(gosp.uloga, 'vlasnik')}
           ai={aiUkljucen()}
           napredno={nacin === 'napredni'}
-          pocetni={pocetni}
+          pocetni={cestice.length === 0 ? 'karta' : pocetni}
+          pocetnoDodavanje={cestice.length === 0}
           semafori={semafori}
           zadnjeRadnje={zadnjeRadnje}
         />

@@ -51,6 +51,14 @@ export interface CesticeRepo {
   uvezi(gospodarstvoId: string, cestice: UvozCesticaDto[], mod: UvozMod): Promise<UvozIshod>;
   /** Naziv/kultura. RLS: član+. 0 izmijenjenih redaka → DbError 'not_found'. */
   update(id: string, patch: { naziv: string; kultura: string | null }): Promise<void>;
+  /** Čestice gospodarstva koje se preklapaju s geometrijom; udio = presjek / manja površina (0–1). */
+  preklapanje(gospodarstvoId: string, geom: RawMultiPolygon): Promise<{ id: string; naziv: string; arkodId: string | null; udio: number }[]>;
+  /** Točka sigurno unutar čestice (null = nema pristupa). */
+  tocka(id: string): Promise<{ lon: number; lat: number } | null>;
+  /** Dopuna ARKOD podataka (bez promjene geometrije — čuva NDVI povijest). RLS: član+. 23505 = ARKOD već na drugoj čestici. */
+  poveziArkod(id: string, p: { arkodId: string; landUseId: number | null; atributi: Record<string, unknown> }): Promise<void>;
+  /** Ista kultura (ili null = bez kulture) na više čestica. RLS: član+. Vraća broj izmijenjenih. */
+  postaviKulturuVise(ids: string[], kultura: string | null): Promise<number>;
   /** Samo kultura (npr. nakon upisa sjetve). RLS: član+. */
   postaviKulturu(id: string, kultura: string): Promise<void>;
   /** RLS: samo vlasnik. Kaskadno briše operacije; audit trigger bilježi brisanje. */

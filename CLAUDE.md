@@ -25,3 +25,5 @@ Repo je jedini izvor istine (lekcija #15). Prije rada pročitaj `README.md`, `do
 - **ARKOD `jpaid`** (ADR-0011) je pseudonim nositelja gospodarstva = osobni podatak: nikad ga ne spremati za tuđa
   gospodarstva, ne stavljati u pločice, ne omogućiti pretragu po MIBPG/jpaid/nazivu; grupni uvoz samo iz dodirnute
   čestice, uz potvrdu korisnika i audit. Nikad ne tražiti ni koristiti farmerove ARKOD/AGRONET pristupne podatke.
+- **Veličina workera**: proj4/turf samo u pregledniku (`@m-agro/domain/uvoz`). Na poslužitelju za HTRS96 koristi
+  `htrs96.ts` (bez ovisnosti, < 1 mm od proj4). Ništa sa side-effectima (proj4.defs) u glavnom `@m-agro/domain` indeksu.

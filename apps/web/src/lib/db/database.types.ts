@@ -47,6 +47,7 @@ export type Database = {
       };
       cestice: {
         Row: {
+          arkod_atributi: Json | null;
           arkod_id: string | null;
           created_at: string;
           geom_arkod: unknown;
@@ -62,6 +63,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          arkod_atributi?: Json | null;
           arkod_id?: string | null;
           created_at?: string;
           geom_arkod: unknown;
@@ -77,6 +79,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          arkod_atributi?: Json | null;
           arkod_id?: string | null;
           created_at?: string;
           geom_arkod?: unknown;
@@ -288,6 +291,14 @@ export type Database = {
       ai_evidentiraj: {
         Args: { p_usd: number };
         Returns: undefined;
+      };
+      cestica_tocka: {
+        Args: { p_cestica: string };
+        Returns: { lon: number; lat: number }[];
+      };
+      cestice_preklapanje: {
+        Args: { p_gospodarstvo: string; p_geom: Json };
+        Returns: { id: string; naziv: string; arkod_id: string | null; udio: number }[];
       };
       obrisi_moj_racun: {
         Args: Record<PropertyKey, never>;

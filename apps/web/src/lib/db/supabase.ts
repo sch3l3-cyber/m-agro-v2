@@ -130,6 +130,42 @@ export const supabaseDb: DbClient = {
       if (count === 0) throw new DbError('cestice.update: nema pristupa ili zapis ne postoji', 'not_found');
     },
 
+    async preklapanje(gospodarstvoId, geom) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.rpc('cestice_preklapanje', { p_gospodarstvo: gospodarstvoId, p_geom: geom as unknown as Json });
+      if (error) fail('cestice.preklapanje', error);
+      return (data ?? []).map((r) => ({ id: r.id, naziv: r.naziv, arkodId: r.arkod_id, udio: Number(r.udio ?? 0) }));
+    },
+
+    async tocka(id) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.rpc('cestica_tocka', { p_cestica: id });
+      if (error) fail('cestice.tocka', error);
+      const t = data?.[0];
+      return t ? { lon: Number(t.lon), lat: Number(t.lat) } : null;
+    },
+
+    async poveziArkod(id, p) {
+      const sb = await supabaseForRequest();
+      const { error, count } = await sb
+        .from('cestice')
+        .update({ arkod_id: p.arkodId, land_use_id: p.landUseId, arkod_atributi: p.atributi as Json }, { count: 'exact' })
+        .eq('id', id);
+      if (error) fail('cestice.poveziArkod', error);
+      if (count === 0) throw new DbError('cestice.poveziArkod: nema pristupa', 'not_found');
+    },
+
+    async postaviKulturuVise(ids, kultura) {
+      const sb = await supabaseForRequest();
+      let ukupno = 0;
+      for (let i = 0; i < ids.length; i += 100) {
+        const { error, count } = await sb.from('cestice').update({ kultura }, { count: 'exact' }).in('id', ids.slice(i, i + 100));
+        if (error) fail('cestice.postaviKulturuVise', error);
+        ukupno += count ?? 0;
+      }
+      return ukupno;
+    },
+
     async postaviKulturu(id, kultura) {
       const sb = await supabaseForRequest();
       const { error } = await sb.from('cestice').update({ kultura }).eq('id', id);

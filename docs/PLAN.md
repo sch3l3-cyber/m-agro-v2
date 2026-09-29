@@ -47,13 +47,14 @@ Redoslijed je bitan: svaka faza stvara uvjete za sljedeću. „Vrata” = uvjet 
 ### Faza 6 — Jednostavno (≈ 1–2 tjedna rada) — 🟡 u tijeku
 - ✅ Postavka računa „Jednostavni / Napredni način” (novi računi jednostavni, postojeći napredni; Račun → Način rada).
 - ✅ Tab „Pregled”: kulture → broj čestica i ha → popis s NDVI semaforom (`ndviSemafor`, packages/domain) i zadnjom radnjom; „Traži pažnju” filtar.
+- ✅ Kultura na više čestica odjednom (Pregled → Kultura).
 - ✅ „+ Upiši radnju” na više čestica odjednom (odabir po kulturi, „odaberi sve”), bez signala; katalog dolazi u Fazi 7.
 - „Moje gospodarenje”: potrošnja po kulturi i sezoni, radnje po mjesecima (iz postojećih podataka).
 - Brzo postavljanje kulture na više čestica odjednom (isti odabir kao „+ Upiši radnju”).
 - Onboarding: prazno gospodarstvo vodi ravno na „Dodaj čestice” (Faza 6b); prazna stanja objašnjavaju sljedeći korak.
 - **Vrata:** 3–5 testnih farmera upiše radnje bez pomoći; tvoja ocjena na mobitelu.
 
-### Faza 6b — Dodavanje čestica bez datoteka (≈ 1 tjedan) — ADR-0010
+### Faza 6b — Dodavanje čestica bez datoteka (≈ 1 tjedan) — ADR-0010 — 🟡 1.–4. gotovo
 Provjereno: javni ARKOD WMS APPRRR-a vraća cijelu česticu (granica na cm u EPSG:3765, naziv, vrsta uporabe,
 površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez naknade i ograničenja pristupa.
 1. **„Dodaj čestice” na karti:** dodirni polje → obris + predloženi naziv i površina → „Dodaj” → dodiruj dalje.

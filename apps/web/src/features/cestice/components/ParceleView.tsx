@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { Cestica } from '@/lib/db';
 import { useMapStore } from '@/stores/mapStore';
 import { CesticaPanel } from './CesticaPanel';
+import { DodajCestice } from './DodajCestice';
 import { ListaCestica } from './ListaCestica';
 import { UrediCesticu } from './UrediCesticu';
 
@@ -59,6 +60,11 @@ export function ParceleView({
   const odaberi = useMapStore((s) => s.odaberi);
   const postaviDonjiRub = useMapStore((s) => s.postaviDonjiRub);
   const odabrana = cestice.find((c) => c.id === odabranaId);
+  const dodavanje = useMapStore((s) => s.dodavanje);
+  const postaviDodavanje = useMapStore((s) => s.postaviDodavanje);
+  // izlazak sa stranice → isključi način dodavanja
+  useEffect(() => () => useMapStore.getState().postaviDodavanje(false), []);
+  const dodajPanel = dodavanje && smijeUredjivati && <DodajCestice gospodarstvoId={gospodarstvoId} cestice={cestice} onGotovo={() => postaviDodavanje(false)} />;
   const desktop = useDesktop();
 
   // Mobitel: odabir u listi → prikaži kartu (sklopljena ploča, čestica vidljiva)
@@ -136,9 +142,24 @@ export function ParceleView({
 
       <section className={`${mobilniPrikaz === 'karta' ? 'flex' : 'hidden'} relative min-h-0 flex-1 md:flex`}>
         <Karta cestice={cestice} />
+        {smijeUredjivati && !dodavanje && (
+          <button
+            type="button"
+            onClick={() => postaviDodavanje(true)}
+            className="absolute left-2 top-2 z-10 min-h-11 rounded-lg bg-white px-3 text-sm font-semibold text-list-700 shadow ring-1 ring-zinc-300"
+          >
+            + Dodaj čestice
+          </button>
+        )}
+        {/* Mobitel: način dodavanja kao donja ploča */}
+        {dodajPanel && !desktop && (
+          <div ref={plocaRef} className="absolute inset-x-0 bottom-0 z-10 max-h-[60%] overflow-y-auto rounded-t-2xl bg-white p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.15)]">
+            {dodajPanel}
+          </div>
+        )}
 
         {/* Mobitel: donja ploča preko karte */}
-        {odabrana && !desktop && (
+        {odabrana && !desktop && !dodavanje && (
           <div
             ref={plocaRef}
             className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-2xl bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.15)] ${rasireno ? 'h-[72%]' : ''}`}
@@ -180,7 +201,8 @@ export function ParceleView({
       </section>
 
       {/* Desktop: detalji kao treći stupac */}
-      {odabrana && desktop && <aside className="min-h-0 w-[22rem] flex-shrink-0 overflow-y-auto border-l border-zinc-200 bg-white p-3 lg:w-96">{detalji}</aside>}
+      {dodajPanel && desktop && <aside className="min-h-0 w-[22rem] flex-shrink-0 overflow-y-auto border-l border-zinc-200 bg-white p-3 lg:w-96">{dodajPanel}</aside>}
+      {odabrana && desktop && !dodavanje && <aside className="min-h-0 w-[22rem] flex-shrink-0 overflow-y-auto border-l border-zinc-200 bg-white p-3 lg:w-96">{detalji}</aside>}
     </div>
   );
 }

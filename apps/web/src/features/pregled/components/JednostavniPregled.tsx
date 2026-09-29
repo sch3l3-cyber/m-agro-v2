@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { sazetakKultura, TIP_LABEL, type Semafor, type SemaforBoja, type TipOperacije } from '@m-agro/domain';
 import type { Cestica } from '@/lib/db';
+import { KulturaVise } from './KulturaVise';
 import { RadnjaVise } from './RadnjaVise';
 
 export interface ZadnjaRadnja {
@@ -27,6 +28,7 @@ export function JednostavniPregled({
   semafori,
   zadnjeRadnje,
   onOtvori,
+  onDodaj,
 }: {
   cestice: Cestica[];
   gospodarstvoId: string;
@@ -34,9 +36,10 @@ export function JednostavniPregled({
   semafori: Record<string, Semafor>;
   zadnjeRadnje: Record<string, ZadnjaRadnja>;
   onOtvori: (id: string) => void;
+  onDodaj: () => void;
 }) {
   const [filtar, setFiltar] = useState<string | null>(null); // null = sve, 'paznja', kultura ili BEZ_KULTURE
-  const [upis, setUpis] = useState(false);
+  const [upis, setUpis] = useState<null | 'radnja' | 'kultura'>(null);
   const [poruka, setPoruka] = useState<string | null>(null);
 
   const kulture = useMemo(() => sazetakKultura(cestice), [cestice]);
@@ -52,19 +55,15 @@ export function JednostavniPregled({
   }, [cestice, filtar, semafori]);
 
   if (upis) {
+    const zatvori = (p?: string) => {
+      setUpis(null);
+      if (p !== undefined) setPoruka(p);
+    };
+    const zajednicko = { cestice, gospodarstvoId, pocetniFiltar: filtar !== null && filtar !== 'paznja' ? filtar : null, onOdustani: () => setUpis(null) };
     return (
       <div className="min-h-0 flex-1 overflow-y-auto bg-zemlja-50">
         <div className="mx-auto max-w-lg p-3">
-          <RadnjaVise
-            cestice={cestice}
-            gospodarstvoId={gospodarstvoId}
-            pocetniFiltar={filtar !== null && filtar !== 'paznja' ? filtar : null}
-            onGotovo={(p) => {
-              setUpis(false);
-              setPoruka(p ?? 'Radnja je spremljena.');
-            }}
-            onOdustani={() => setUpis(false)}
-          />
+          {upis === 'radnja' ? <RadnjaVise {...zajednicko} onGotovo={(p) => zatvori(p ?? 'Radnja je spremljena.')} /> : <KulturaVise {...zajednicko} onGotovo={zatvori} />}
         </div>
       </div>
     );
@@ -75,9 +74,14 @@ export function JednostavniPregled({
     <div className="min-h-0 flex-1 overflow-y-auto bg-zemlja-50">
       <div className="mx-auto flex max-w-lg flex-col gap-3 p-3">
         {smijeUpisivati && (
-          <button type="button" onClick={() => { setPoruka(null); setUpis(true); }} className="min-h-14 rounded-xl bg-list-600 text-lg font-semibold text-white shadow-sm hover:bg-list-700">
-            + Upiši radnju
-          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => { setPoruka(null); setUpis('radnja'); }} className="min-h-14 flex-1 rounded-xl bg-list-600 text-lg font-semibold text-white shadow-sm hover:bg-list-700">
+              + Upiši radnju
+            </button>
+            <button type="button" onClick={() => { setPoruka(null); setUpis('kultura'); }} className="min-h-14 rounded-xl bg-white px-4 font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10">
+              Kultura
+            </button>
+          </div>
         )}
         {poruka && (
           <p role="status" className="rounded-lg bg-list-500/10 px-3 py-2 text-sm text-list-700">
@@ -116,6 +120,11 @@ export function JednostavniPregled({
             );
           })}
         </ul>
+        {smijeUpisivati && (
+          <button type="button" onClick={onDodaj} className="min-h-11 self-start rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300">
+            + Dodaj čestice s karte (ARKOD)
+          </button>
+        )}
         <p className="text-xs text-zinc-500">
           Boja = promjena NDVI-ja (satelit) u zadnjih ~45 dana: zeleno u redu, žuto pad, crveno nagli pad, sivo nema svježe snimke.
         </p>

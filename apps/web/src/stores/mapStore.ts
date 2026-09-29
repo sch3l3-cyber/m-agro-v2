@@ -42,6 +42,15 @@ interface MapState {
   postaviDonjiRub: (px: number) => void;
   odaberi: (id: string | null, izvor: 'karta' | 'lista') => void;
   postaviOverlay: (o: Overlay | null) => void;
+  /** „Dodaj čestice” (ADR-0010): dodir na kartu pita ARKOD umjesto da odabire česticu */
+  dodavanje: boolean;
+  postaviDodavanje: (b: boolean) => void;
+  /** zadnji dodir u načinu dodavanja (br raste i kad je ista točka) */
+  dodir: { lon: number; lat: number; br: number } | null;
+  postaviDodir: (lon: number, lat: number) => void;
+  /** obris ARKOD čestice koja se nudi za dodavanje (WGS84) */
+  pregledArkod: GeoJSON.MultiPolygon | null;
+  postaviPregledArkod: (g: GeoJSON.MultiPolygon | null) => void;
 }
 
 export const useMapStore = create<MapState>()((set, get) => ({
@@ -72,6 +81,15 @@ export const useMapStore = create<MapState>()((set, get) => ({
     }
     set({ odabranaId: id, izvor, odabirBr: get().odabirBr + 1 });
   },
+  dodavanje: false,
+  postaviDodavanje: (b) => {
+    set({ dodavanje: b, dodir: null, pregledArkod: null });
+    if (b) get().odaberi(null, 'karta');
+  },
+  dodir: null,
+  postaviDodir: (lon, lat) => set({ dodir: { lon, lat, br: (get().dodir?.br ?? 0) + 1 } }),
+  pregledArkod: null,
+  postaviPregledArkod: (g) => set({ pregledArkod: g }),
   /** NDVI tab (zadržano ime radi postojećeg koda) */
   postaviOverlay: (o) => get().postaviSloj('ndvi', o),
 }));
