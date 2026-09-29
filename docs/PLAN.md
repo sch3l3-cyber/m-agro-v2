@@ -68,6 +68,8 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
    „ARKOD granica promijenjena — ažurirati?”; rezerva za zemljište izvan ARKOD-a: DGU katastarske čestice (otvorena dozvola).
 - **Opterećenje:** 1 zahtjev prema APPRRR-u po dodiru (vanjski javni servis, bez naše kvote); ~2 ms CPU u workeru.
   Tjedna provjera za 25 000 čestica ≈ 3,5 h usporenog rada u GitHub Actions — izvedivo, ali prije toga zatražiti WFS pristup.
+- **Nadogradnja (ADR-0011, čeka potvrdu APPRRR-a):** vlastiti ARKOD sloj iz javnog `land_parcels.gpkg` (PMTiles na R2)
+  i „Dodaj cijelo gospodarstvo” — dodir jedne čestice nudi sve čestice istog nositelja (`jpaid`), uz potvrdu i zaštite privatnosti.
 - **Vrata:** novi testni farmer doda svoje čestice za < 5 minuta bez ikakve datoteke.
 
 ### Faza 7 — Kvaliteta podataka + privola (≈ 2 tjedna)
@@ -86,6 +88,8 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
 - Vrijeme: dnevna povijest po ćeliji mreže (~9 km, ERA5-Land, CC-BY) + prognoza; spremanje po ćeliji, ne po čestici.
 - Kompaktna pohrana (samo čiste snimke, p10/p50/p90), admin prikaz veličine baze i trenda rasta.
 - Sentinel Hub ostaje samo za interaktivne slike na karti.
+- **Regionalni NDVI (ADR-0011):** ista obrada za sve ARKOD oranice u regiji → agregati po općini/vrsti uporabe/datumu
+  (sirovi podaci u Parquetu na R2) → usporedba s okolicom i upozorenja rade i prije nego što imamo korisnike u blizini.
 - **Vrata:** 1 mjesec noćnog rada bez greške; usporedba s dosadašnjim statistikama (razlika < 0,02 NDVI).
 
 ### Faza 9 — Upozorenja v1: pravila + usporedba sa susjedima (≈ 2–3 tjedna)
@@ -149,3 +153,5 @@ stupac „komercijalno” u tablici.
 - Hoće li se podaci ikad dijeliti s trećima (dobavljači, osiguravatelji, otkupljivači) — određuje tekst privole.
 - Pravnik za pravila privatnosti v2 i uvjete prije pozivanja testera.
 - Tko su prvih 10 testnih gospodarstava.
+- Pisani upit APPRRR-u (prostorni.podaci@apprrr.hr): smijemo li koristiti `land_parcels.gpkg` u aplikaciji (i komercijalno)
+  i grupirati čestice po nositelju (`jpaid`) za „Dodaj cijelo gospodarstvo” (ADR-0011).

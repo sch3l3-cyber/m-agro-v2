@@ -22,3 +22,6 @@ Repo je jedini izvor istine (lekcija #15). Prije rada pročitaj `README.md`, `do
 - **Komercijalni prag**: Open-Meteo besplatni i Esri pločice bez ključa nisu za komercijalnu upotrebu — vidi PLAN.md §5.3.
 - **Čestice**: glavni način dodavanja je dodir na ARKOD česticu (ADR-0010) — ARKOD WMS GetFeatureInfo uvijek u
   EPSG:3765 (u 4326 su koordinate zaokružene na ~10 m), preko poslužitelja, bez masovnog skidanja; izvor „ARKOD, APPRRR”.
+- **ARKOD `jpaid`** (ADR-0011) je pseudonim nositelja gospodarstva = osobni podatak: nikad ga ne spremati za tuđa
+  gospodarstva, ne stavljati u pločice, ne omogućiti pretragu po MIBPG/jpaid/nazivu; grupni uvoz samo iz dodirnute
+  čestice, uz potvrdu korisnika i audit. Nikad ne tražiti ni koristiti farmerove ARKOD/AGRONET pristupne podatke.

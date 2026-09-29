@@ -57,3 +57,4 @@ alternativa je tjedni `pg_dump` kroz GitHub Actions (Claude može postaviti).
 - Hoće li se podaci ikad dijeliti s trećima (dobavljači, osiguravatelji, otkupljivači) — određuje tekst privole.
 - Pravnik za pravila privatnosti v2 (privola za modele + zasebni opt-in za treće).
 - Popis prvih 10 testnih gospodarstava.
+- Email APPRRR-u (prostorni.podaci@apprrr.hr) o uvjetima korištenja ARKOD GPKG-a i grupiranja po nositelju — Claude priprema nacrt (docs/pravno/UPIT_APPRRR.md).
