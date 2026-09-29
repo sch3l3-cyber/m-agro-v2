@@ -49,8 +49,26 @@ Redoslijed je bitan: svaka faza stvara uvjete za sljedeću. „Vrata” = uvjet 
 - ✅ Tab „Pregled”: kulture → broj čestica i ha → popis s NDVI semaforom (`ndviSemafor`, packages/domain) i zadnjom radnjom; „Traži pažnju” filtar.
 - ✅ „+ Upiši radnju” na više čestica odjednom (odabir po kulturi, „odaberi sve”), bez signala; katalog dolazi u Fazi 7.
 - „Moje gospodarenje”: potrošnja po kulturi i sezoni, radnje po mjesecima (iz postojećih podataka).
-- Onboarding: uvoz ARKOD-a uz upute sa slikama; prazna stanja koja objašnjavaju sljedeći korak.
+- Brzo postavljanje kulture na više čestica odjednom (isti odabir kao „+ Upiši radnju”).
+- Onboarding: prazno gospodarstvo vodi ravno na „Dodaj čestice” (Faza 6b); prazna stanja objašnjavaju sljedeći korak.
 - **Vrata:** 3–5 testnih farmera upiše radnje bez pomoći; tvoja ocjena na mobitelu.
+
+### Faza 6b — Dodavanje čestica bez datoteka (≈ 1 tjedan) — ADR-0010
+Provjereno: javni ARKOD WMS APPRRR-a vraća cijelu česticu (granica na cm u EPSG:3765, naziv, vrsta uporabe,
+površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez naknade i ograničenja pristupa.
+1. **„Dodaj čestice” na karti:** dodirni polje → obris + predloženi naziv i površina → „Dodaj” → dodiruj dalje.
+   Poslužitelj pita ARKOD (server action, reprojekcija 3765 → WGS84), sprema kroz postojeći `uvezi_cestice`.
+2. **Zaštita od duplikata:** isti ARKOD id ili > 50 % preklapanja u istom gospodarstvu → „Već imaš ovu česticu”.
+3. **Crtanje na karti** (rezerva: polje nije u ARKOD-u ili je samo dio ARKOD čestice) — terra-draw, učitava se na zahtjev.
+4. **„Poveži s ARKOD-om”** za postojeće čestice bez ARKOD id-a (sve Ivanove): dopuna id-a, vrste uporabe, atributa
+   i po želji preciznije granice.
+5. ARKOD atributi uz česticu (`arkod_atributi`) → kontekst za pravila i AI (zone zaštite voda, Natura 2000, nagib).
+6. Uvoz datoteke seli u „Napredno” (GeoJSON/KML; kasnije Shapefile i ISOXML granice s terminala).
+7. Kasnije (Faza 8): tjedna provjera promjena ARKOD granica za sve čestice (usporeno, ≤ 2 zaht./s) → obavijest
+   „ARKOD granica promijenjena — ažurirati?”; rezerva za zemljište izvan ARKOD-a: DGU katastarske čestice (otvorena dozvola).
+- **Opterećenje:** 1 zahtjev prema APPRRR-u po dodiru (vanjski javni servis, bez naše kvote); ~2 ms CPU u workeru.
+  Tjedna provjera za 25 000 čestica ≈ 3,5 h usporenog rada u GitHub Actions — izvedivo, ali prije toga zatražiti WFS pristup.
+- **Vrata:** novi testni farmer doda svoje čestice za < 5 minuta bez ikakve datoteke.
 
 ### Faza 7 — Kvaliteta podataka + privola (≈ 2 tjedna)
 - Sezona po čestici: kultura, sorta, datum sjetve, predusjev (predlaže se iz prošle sezone).
@@ -117,6 +135,8 @@ pozivnica) · trošak/prihod po čestici · foto s polja po čestici · automats
 | ERA5-Land (Copernicus CDS) | besplatno, CC-BY (i komercijalno) | kašnjenje ~5 dana | — |
 | Esri satelitska podloga | izravne pločice bez ključa — komercijalni uvjeti nejasni | prije naplate | ArcGIS Location Platform ključ (ima besplatni sloj) ili DOF Državne geodetske uprave — provjeriti uvjete |
 | Claude API (AI savjetnik) | plaća se po potrošnji, tvrdi limit u bazi | — | — |
+| ARKOD WMS (APPRRR) | javan, bez naknade i ograničenja pristupa (GetCapabilities) | masovna tjedna provjera | zatražiti WFS pristup od APPRRR-a |
+| DGU katastar (INSPIRE WFS) | Otvorena dozvola, komercijalno dopušteno uz navođenje izvora | — | — |
 | Resend (email) | 3 000 / mj, 100 / dan | tjedni sažetak iznad ~100 gosp./dan | raspodijeliti po danima ili plaćeni plan |
 
 **Zaključak:** uz premještanje masovne obrade izvan Sentinel Huba (Faza 8), cijeli plan do ~100 gospodarstava ostaje na 0 €
