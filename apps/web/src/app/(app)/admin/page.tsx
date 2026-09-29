@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDb } from '@/lib/db';
-import { ProbaSentry } from '@/features/admin/ProbaSentry';
+import { ProbaSentryLoader } from '@/components/SentryLoader';
 
 export const metadata: Metadata = { title: 'Admin' };
 export const dynamic = 'force-dynamic';
@@ -79,7 +79,7 @@ export default async function Page() {
 
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200" aria-label="Praćenje grešaka">
           <h2 className="mb-2 font-semibold">Praćenje grešaka (Sentry)</h2>
-          <ProbaSentry ukljuceno={!!process.env.NEXT_PUBLIC_SENTRY_DSN} />
+          <ProbaSentryLoader ukljuceno={!!process.env.NEXT_PUBLIC_SENTRY_DSN} />
         </section>
 
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-200" aria-label="Zadnje promjene">
