@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { SentryInit } from '@/components/SentryInit';
 
 export const metadata: Metadata = {
   title: { default: 'M-AGRO', template: '%s · M-AGRO' },
@@ -18,7 +19,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="hr">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        <SentryInit />
+      </body>
     </html>
   );
 }

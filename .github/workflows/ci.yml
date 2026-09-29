@@ -36,6 +36,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
       NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+      NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
