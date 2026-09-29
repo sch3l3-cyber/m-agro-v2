@@ -2,7 +2,7 @@ import 'server-only';
 import { UlogaSchema } from '@m-agro/domain';
 import { z } from 'zod';
 import { supabaseForRequest } from '../auth/supabase-server';
-import { DbError, type Cestica, type DbClient, type Operacija, type OperacijaSCesticom, type UvozIshod } from './types';
+import { DbError, type AdminPregled, type Cestica, type DbClient, type Operacija, type OperacijaSCesticom, type UvozIshod } from './types';
 import type { Json } from './database.types';
 
 const GeomSchema = z.object({
@@ -17,6 +17,14 @@ function fail(ctx: string, err: { message: string; code?: string }): never {
 }
 
 export const supabaseDb: DbClient = {
+  async adminPregled(limitKvote) {
+    const sb = await supabaseForRequest();
+    const { data, error } = await sb.rpc('admin_pregled', { p_limit_kvote: limitKvote });
+    if (error?.code === '42501') return null;
+    if (error) fail('adminPregled', error);
+    return data as unknown as AdminPregled;
+  },
+
   gospodarstva: {
     async listMine(userId) {
       const sb = await supabaseForRequest();

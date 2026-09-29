@@ -91,7 +91,25 @@ export interface OperacijeRepo {
   remove(id: string): Promise<void>;
 }
 
+export interface AdminPregled {
+  kvota: { mjesec: string; potroseno: number; limit: number; povijest: { mjesec: string; jedinice: number }[] };
+  brojke: {
+    korisnika: number;
+    korisnika_7d: number;
+    mfa_ukljuceno: number;
+    gospodarstava: number;
+    cestica: number;
+    hektara: number;
+    operacija: number;
+    operacija_30d: number;
+    ndvi_cache: number;
+  };
+  audit: { created_at: string; actor_email: string | null; action: string; target_type: string | null; target_id: string | null }[];
+}
+
 export interface DbClient {
+  /** null = korisnik nije admin (ili je admin s MFA-om bez koda) */
+  adminPregled(limitKvote: number): Promise<AdminPregled | null>;
   gospodarstva: GospodarstvaRepo;
   cestice: CesticeRepo;
   operacije: OperacijeRepo;
