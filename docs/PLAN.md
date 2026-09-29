@@ -71,6 +71,7 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
   Tjedna provjera za 25 000 čestica ≈ 3,5 h usporenog rada u GitHub Actions — izvedivo, ali prije toga zatražiti WFS pristup.
 - **Nadogradnja (ADR-0011, čeka potvrdu APPRRR-a):** vlastiti ARKOD sloj iz javnog `land_parcels.gpkg` (PMTiles na R2)
   i „Dodaj cijelo gospodarstvo” — dodir jedne čestice nudi sve čestice istog nositelja (`jpaid`), uz potvrdu i zaštite privatnosti.
+- ✅ (baza) Jedinstvenost MIBPG-a samo za provjerena gospodarstva, `provjereno` postavlja samo admin.
 - **MIBPG pri stvaranju gospodarstva** (ADR-0011 dopuna): učitavanje = MIBPG + dodir jedne svoje čestice; razine provjere
   gospodarstva (neprovjereno/provjereno); jedinstvenost MIBPG-a samo za provjerena (danas je globalna → rizik da tuđinac „zauzme” MIBPG).
 - **Vrata:** novi testni farmer doda svoje čestice za < 5 minuta bez ikakve datoteke.

@@ -109,6 +109,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           id: string;
+          provjereno: boolean;
           mibpg: string | null;
           naziv: string;
           updated_at: string;
