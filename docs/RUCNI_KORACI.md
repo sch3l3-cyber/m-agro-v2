@@ -8,7 +8,7 @@ upisuješ ih samo na navedenom mjestu. Kad završiš korak, javi Claudeu da dovr
 2. *Add New Monitor* → tip **HTTP(s)** → URL `https://m-agro-v2-web.sch3l3.workers.dev/api/health` → interval 5 min.
 3. *Alert contacts*: tvoj email. Spremi.
 
-## 2. Sentry — praćenje grešaka (10 min, besplatno)
+## 2. Sentry — praćenje grešaka (10 min, besplatno) ✅ gotovo 29. 9.
 1. https://sentry.io → Sign up → organizacija „m-agro”.
 2. *Create project* → platforma **Next.js** → ime `m-agro-v2-web`.
 3. Kopiraj **DSN** (izgleda kao `https://…@o….ingest.sentry.io/…`). DSN nije tajna, ali ga svejedno upiši ovdje:
@@ -21,7 +21,7 @@ upisuješ ih samo na navedenom mjestu. Kad završiš korak, javi Claudeu da dovr
 2. Supabase → Authentication → **URL Configuration**: Site URL = `https://app.m-agro.hr`; u Redirect URLs dodaj
    `https://app.m-agro.hr/auth/potvrda` (stari workers.dev ostavi).
 3. GitHub → Settings → Secrets and variables → Actions → Variables → `NEXT_PUBLIC_SITE_URL` = `https://app.m-agro.hr`.
-4. Javi Claudeu → on dodaje domenu u CORS sentinel workera i CSP.
+4. Javi Claudeu → on provjerava prijavu, NDVI i mailove na novoj adresi (CORS sentinela je već pripremljen).
 
 ## 4. Zaštita od procurjelih lozinki (2 min)
 Supabase → Authentication → **Attack Protection** (ili Policies/Passwords) → uključi *Leaked password protection*.

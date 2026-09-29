@@ -7,7 +7,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
-    "ALLOWED_ORIGINS": "https://m-agro-v2-web.sch3l3.workers.dev,http://localhost:3000",
+    "ALLOWED_ORIGINS": "https://app.m-agro.hr,https://m-agro-v2-web.sch3l3.workers.dev,http://localhost:3000",
     "SUPABASE_URL": "https://klgdptmjnwvlzygneqcf.supabase.co",
     // publishable ključ je javan po dizajnu (RLS štiti podatke)
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4koUJ8lcyqRjzRq8dzv1jw_r4i89J_K"
