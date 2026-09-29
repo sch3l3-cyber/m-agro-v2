@@ -9,7 +9,7 @@ Web: https://m-agro-v2-web.sch3l3.workers.dev · Sentinel: https://m-agro-v2-sen
 | 2 NDVI | ✅ dijeljeni cache, slojevi NDVI/kontrast/prave boje/NDMI/NDRE, SCL maska, trend sezone, **po godinama od 2017.**, rate limit + globalna kvota | email alarm na 80 % kvote (sad samo u /admin) |
 | 3 Operacije | ✅ 6 vrsta, offline PWA + red, pregled gospodarstva, CSV, poništavanje brisanja | — |
 | 4 VRA | ✅ 3/5/7 zona (razmaci ili jednake površine), rubni pikseli, doze, CSV, upis kao prihrana, prognoza „kad rasipati”, dodir na zonu | ISOXML izvoz (post-launch) |
-| 5 Dorada + AI | 🟡 ispis/PDF kartice čestice, GDPR izvoz | AI savjetnik (treba API ključ), godišnji izvještaj OPG-a, pravila privatnosti/uvjeti, landing, Lighthouse audit |
+| 5 Dorada + AI | 🟡 ispis/PDF kartice čestice i godišnjeg izvještaja OPG-a, GDPR izvoz | AI savjetnik (treba API ključ), pravila privatnosti/uvjeti, landing, Lighthouse audit |
 
 ## Sigurnosni checklist (03_SIGURNOST, prije launcha)
 | Stavka | Stanje |

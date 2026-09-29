@@ -25,7 +25,17 @@ const norm = (s: string) => s.toLocaleLowerCase('hr').normalize('NFD').replace(/
  * Sve operacije gospodarstva za godinu: filtri (vrsta, čestica, tekst), ukupna potrošnja inputa,
  * CSV za Excel i brisanje s poništavanjem (5 s) — briše se tek kad istekne rok.
  */
-export function PregledOperacija({ operacije, godina, smijeBrisati }: { operacije: OperacijaSCesticom[]; godina: number; smijeBrisati: boolean }) {
+export function PregledOperacija({
+  operacije,
+  godina,
+  smijeBrisati,
+  gospodarstvoId,
+}: {
+  operacije: OperacijaSCesticom[];
+  godina: number;
+  smijeBrisati: boolean;
+  gospodarstvoId: string;
+}) {
   const [tip, setTip] = useState<TipOperacije | null>(null);
   const [cesticaId, setCesticaId] = useState('');
   const [trazi, setTrazi] = useState('');
@@ -165,6 +175,9 @@ export function PregledOperacija({ operacije, godina, smijeBrisati }: { operacij
 
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm text-zinc-600">{prikaz.length} operacija</p>
+          <a href={`/ispis/gospodarstvo/${gospodarstvoId}?godina=${godina}`} className="ml-auto min-h-11 rounded-lg px-3 py-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10">
+            Godišnji izvještaj (PDF)
+          </a>
           {prikaz.length > 0 && (
             <button type="button" onClick={izvoz} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-list-700 ring-1 ring-zinc-300 hover:bg-list-500/10">
               Izvoz za Excel (CSV)

@@ -44,7 +44,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           ))}
         </nav>
       </div>
-      <PregledOperacija key={godina} operacije={operacije} godina={godina} smijeBrisati={imaOvlast(gosp.uloga, 'clan')} />
+      <PregledOperacija key={godina} operacije={operacije} godina={godina} smijeBrisati={imaOvlast(gosp.uloga, 'clan')} gospodarstvoId={id} />
     </>
   );
 }
