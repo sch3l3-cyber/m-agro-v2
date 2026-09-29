@@ -55,7 +55,7 @@ begin
     from public.zahtjevi_uvoza z
     join public.gospodarstva g on g.id = z.gospodarstvo_id
     left join auth.users u on u.id = g.created_by
-    where z.status = 'ceka' or z.id in (select id from public.zahtjevi_uvoza where status = 'gotovo' order by rijeseno_at desc limit 20)
+    where z.status = 'ceka' or z.id in (select z2.id from public.zahtjevi_uvoza z2 where z2.status = 'gotovo' order by z2.rijeseno_at desc limit 20)
     order by z.status desc, z.created_at;
 end;
 $$;
