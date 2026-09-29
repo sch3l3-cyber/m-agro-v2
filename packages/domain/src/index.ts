@@ -8,3 +8,4 @@ export * from './cestica';
 export * from './operacija';
 export * from './vra';
 export * from './prognoza';
+export * from './savjetnik';

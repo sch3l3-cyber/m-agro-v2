@@ -5,10 +5,11 @@ import type { Cestica } from '@/lib/db';
 import { NdviPanel } from '@/features/ndvi/components/NdviPanel';
 import { OperacijeTab } from '@/features/operacije/components/OperacijeTab';
 import { VraTab } from '@/features/vra/components/VraTab';
+import { SavjetnikTab } from '@/features/savjetnik/components/SavjetnikTab';
 import { useMapStore } from '@/stores/mapStore';
 
 const ha = new Intl.NumberFormat('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-type Tab = 'ndvi' | 'vra' | 'operacije';
+type Tab = 'ndvi' | 'vra' | 'operacije' | 'savjet';
 
 /**
  * Sadržaj odabrane čestice: zaglavlje (naziv, ha, kultura, Uredi) + tabovi NDVI | Operacije.
@@ -23,6 +24,7 @@ export function CesticaPanel({
   onZatvori,
   sazeto = false,
   onRasiri,
+  ai = false,
 }: {
   cestica: Cestica;
   gospodarstvoId: string;
@@ -32,6 +34,8 @@ export function CesticaPanel({
   /** mobilna ploča sklopljena: vidi se samo zaglavlje; NDVI ostaje montiran (slika ostaje na karti) */
   sazeto?: boolean;
   onRasiri?: () => void;
+  /** AI savjetnik uključen (postoji ANTHROPIC_API_KEY) */
+  ai?: boolean;
 }) {
   const [tab, setTabState] = useState<Tab>('ndvi');
   // VRA se montira tek kad se prvi put otvori (bez nepotrebnih Sentinel poziva), a onda ostaje
@@ -73,16 +77,16 @@ export function CesticaPanel({
       </div>
 
       <div hidden={sazeto} className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 border-b border-zinc-200" role="tablist" aria-label="Prikaz čestice">
-        {(['ndvi', 'vra', 'operacije'] as const).map((t) => (
+      <div className={`grid ${ai ? 'grid-cols-4' : 'grid-cols-3'} border-b border-zinc-200`} role="tablist" aria-label="Prikaz čestice">
+        {(ai ? (['ndvi', 'vra', 'operacije', 'savjet'] as const) : (['ndvi', 'vra', 'operacije'] as const)).map((t) => (
           <button
             key={t}
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`-mb-px min-h-11 border-b-2 text-sm font-semibold ${tab === t ? 'border-list-600 text-list-700' : 'border-transparent text-zinc-500'}`}
+            className={`-mb-px min-h-11 border-b-2 ${ai ? 'text-[13px]' : 'text-sm'} font-semibold ${tab === t ? 'border-list-600 text-list-700' : 'border-transparent text-zinc-500'}`}
           >
-            {t === 'ndvi' ? 'Satelit' : t === 'vra' ? 'VRA' : `Operacije${brojOperacija !== null ? ` (${brojOperacija})` : ''}`}
+            {t === 'ndvi' ? 'Satelit' : t === 'vra' ? 'VRA' : t === 'savjet' ? 'Savjet' : `Operacije${brojOperacija !== null ? ` (${brojOperacija})` : ''}`}
           </button>
         ))}
       </div>
@@ -98,6 +102,11 @@ export function CesticaPanel({
       <div hidden={tab !== 'operacije'}>
         <OperacijeTab cesticaId={cestica.id} gospodarstvoId={gospodarstvoId} kultura={cestica.kultura} smijeUpisivati={smijeUredjivati} onBroj={onBroj} />
       </div>
+      {ai && (
+        <div hidden={tab !== 'savjet'}>
+          <SavjetnikTab cesticaId={cestica.id} />
+        </div>
+      )}
       </div>
     </div>
   );

@@ -31,13 +31,15 @@ Ako traži Pro plan, preskoči — nije nužno za testiranje.
 M-AGRO → gore desno tvoj email (**Račun**) → *Uključi dvofaktorsku prijavu* → skeniraj QR u Google/Microsoft Authenticatoru → upiši kod.
 
 ## 6. AI savjetnik — Anthropic API ključ (odluka + 10 min)
-- API se **plaća po potrošnji** (nije dio besplatnog Claude plana). Za jednog farmera to su obično centi do par eura mjesečno;
-  postavit ćemo mjesečni limit potrošnje da ne može iznenaditi.
-1. https://console.anthropic.com → prijava → **Billing**: dodaj karticu i postavi **mjesečni limit** (npr. 5 €).
-2. **API Keys** → Create Key → ime `m-agro-v2`.
+Kod je gotov i objavljen; tab **Savjet** u panelu čestice pojavi se sam čim postoji ključ.
+- API se **plaća po potrošnji** (nije dio Claude pretplate). Model Claude Sonnet 5.5: jedno pitanje ≈ 0,01–0,02 USD.
+- Aplikacija ima **tvrdi mjesečni limit** (zadano 5 USD ≈ 300+ pitanja) i 20 pitanja/sat po korisniku.
+1. https://console.anthropic.com → prijava → **Billing**: dodaj karticu, uplati kredit (npr. 5 USD) i postavi **spend limit**.
+2. **API Keys** → Create Key → ime `m-agro-v2` → kopiraj.
 3. Cloudflare → Workers & Pages → **m-agro-v2-web** → Settings → Variables and Secrets → Add → tip **Secret** →
    ime `ANTHROPIC_API_KEY` → zalijepi ključ → Deploy.
-4. Javi Claudeu → on radi savjetnika (NDVI + operacije + prognoza kao kontekst, odgovori na hrvatskom).
+4. (Po želji) isto mjesto, tip **Text**: `AI_MONTHLY_BUDGET_USD` (npr. `10`) ili `AI_MODEL` = `claude-haiku-4-5` (upola jeftinije).
+5. Javi Claudeu → provjeri tab Savjet na čestici.
 
 ## 7. Pravila privatnosti i uvjeti korištenja (odluka)
 Nacrt je napisan: `docs/pravno/PRAVILA_PRIVATNOSTI_NACRT.md` (GDPR: koji podaci, gdje se čuvaju — Supabase EU, Cloudflare; pravo na izvoz koji već postoji i na brisanje).

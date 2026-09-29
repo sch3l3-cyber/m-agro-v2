@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { imaOvlast } from '@m-agro/domain';
 import { getAuth } from '@/lib/auth';
 import { getDb } from '@/lib/db';
+import { aiUkljucen } from '@/lib/ai';
 import { ParceleView } from '@/features/cestice/components/ParceleView';
 
 export const metadata: Metadata = { title: 'Čestice' };
@@ -71,7 +72,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           </div>
         </div>
       ) : (
-        <ParceleView cestice={cestice} gospodarstvoId={id} smijeUredjivati={smijeUvoz} smijeBrisati={imaOvlast(gosp.uloga, 'vlasnik')} />
+        <ParceleView cestice={cestice} gospodarstvoId={id} smijeUredjivati={smijeUvoz} smijeBrisati={imaOvlast(gosp.uloga, 'vlasnik')} ai={aiUkljucen()} />
       )}
     </>
   );

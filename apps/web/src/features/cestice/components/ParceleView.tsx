@@ -40,10 +40,12 @@ export function ParceleView({
   gospodarstvoId,
   smijeUredjivati,
   smijeBrisati,
+  ai = false,
 }: {
   cestice: Cestica[];
   gospodarstvoId: string;
   smijeUredjivati: boolean;
+  ai?: boolean;
   smijeBrisati: boolean;
 }) {
   const [mobilniPrikaz, setMobilniPrikaz] = useState<'karta' | 'lista'>('karta');
@@ -97,6 +99,7 @@ export function ParceleView({
           cestica={odabrana}
           gospodarstvoId={gospodarstvoId}
           smijeUredjivati={smijeUredjivati}
+          ai={ai}
           onZatvori={zatvori}
           {...(smijeUredjivati && { onUredi: () => setUredjujeId(odabrana.id) })}
         />
@@ -154,6 +157,7 @@ export function ParceleView({
                   cestica={odabrana}
                   gospodarstvoId={gospodarstvoId}
                   smijeUredjivati={smijeUredjivati}
+                  ai={ai}
                   onZatvori={zatvori}
                   sazeto={!rasireno}
                   {...(!rasireno && { onRasiri: () => setRasireno(true) })}

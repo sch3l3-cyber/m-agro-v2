@@ -169,6 +169,7 @@ export type Database = {
           percentiles: Json | null;
           sample_count: number | null;
           stdev: number | null;
+          status: string;
         };
         Insert: {
           cloud_pct?: number | null;
@@ -279,6 +280,14 @@ export type Database = {
       admin_pregled: {
         Args: { p_limit_kvote?: number };
         Returns: Json;
+      };
+      ai_rezerviraj: {
+        Args: { p_limit_usd: number; p_po_satu?: number };
+        Returns: string;
+      };
+      ai_evidentiraj: {
+        Args: { p_usd: number };
+        Returns: undefined;
       };
       obrisi_moj_racun: {
         Args: Record<PropertyKey, never>;

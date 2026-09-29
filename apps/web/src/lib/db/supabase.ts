@@ -142,6 +142,65 @@ export const supabaseDb: DbClient = {
       if (error) fail('cestice.remove', error);
       if (count === 0) throw new DbError('cestice.remove: nema pristupa ili zapis ne postoji', 'not_found');
     },
+
+    async kontekst(id, brojSnimki) {
+      const sb = await supabaseForRequest();
+      const { data: c, error } = await sb
+        .from('cestice')
+        .select('id, naziv, arkod_id, kultura, land_use_id, povrsina_ha, geom_arkod, geom_hash')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) {
+        if (error.code === '22P02') return null;
+        fail('cestice.kontekst', error);
+      }
+      if (!c) return null;
+      const cestica = {
+        id: c.id,
+        naziv: c.naziv,
+        arkodId: c.arkod_id,
+        kultura: c.kultura,
+        landUseId: c.land_use_id,
+        povrsinaHa: Number(c.povrsina_ha ?? 0),
+        geom: GeomSchema.parse(c.geom_arkod),
+      };
+      if (!c.geom_hash) return { cestica, ndvi: [] };
+      const { data: n, error: e2 } = await sb
+        .from('ndvi_cache')
+        .select('datum, mean, percentiles, cloud_pct')
+        .eq('geom_hash', c.geom_hash)
+        .eq('status', 'ok')
+        .not('mean', 'is', null)
+        .order('datum', { ascending: false })
+        .limit(brojSnimki);
+      if (e2) fail('cestice.kontekst.ndvi', e2);
+      const pct = (p: unknown, k: string): number | null => {
+        const o = p as Record<string, unknown> | null;
+        const v = o?.[`${k}.0`] ?? o?.[k]; // Sentinel ključevi su "10.0", "90.0"
+        return typeof v === 'number' ? v : null;
+      };
+      return {
+        cestica,
+        ndvi: n
+          .map((t) => ({ datum: t.datum, mean: Number(t.mean), p10: pct(t.percentiles, '10'), p90: pct(t.percentiles, '90'), oblacnoPct: t.cloud_pct }))
+          .reverse(),
+      };
+    },
+  },
+
+  ai: {
+    async rezerviraj(limitUsd, poSatu) {
+      const sb = await supabaseForRequest();
+      const { data, error } = await sb.rpc('ai_rezerviraj', { p_limit_usd: limitUsd, p_po_satu: poSatu });
+      if (error) fail('ai.rezerviraj', error);
+      if (data !== 'ok' && data !== 'sat' && data !== 'mjesec') throw new DbError(`ai.rezerviraj: neočekivano ${String(data)}`, undefined);
+      return data;
+    },
+    async evidentiraj(usd) {
+      const sb = await supabaseForRequest();
+      const { error } = await sb.rpc('ai_evidentiraj', { p_usd: Math.min(0.1, Math.max(0, Math.round(usd * 10000) / 10000)) });
+      if (error) fail('ai.evidentiraj', error);
+    },
   },
 
   operacije: {

@@ -55,6 +55,8 @@ export interface CesticeRepo {
   postaviKulturu(id: string, kultura: string): Promise<void>;
   /** RLS: samo vlasnik. Kaskadno briše operacije; audit trigger bilježi brisanje. */
   remove(id: string): Promise<void>;
+  /** Čestica + NDVI povijest iz dijeljenog cachea. null = nema pristupa. */
+  kontekst(id: string, brojSnimki: number): Promise<KontekstCestice | null>;
 }
 
 export interface Operacija {
@@ -91,6 +93,29 @@ export interface OperacijeRepo {
   remove(id: string): Promise<void>;
 }
 
+export interface NdviTocka {
+  datum: string;
+  mean: number;
+  p10: number | null;
+  p90: number | null;
+  oblacnoPct: number | null;
+}
+
+export interface KontekstCestice {
+  cestica: Cestica;
+  /** Zadnje čiste snimke (status ok), najstarije prve. */
+  ndvi: NdviTocka[];
+}
+
+export type AiRezervacija = 'ok' | 'sat' | 'mjesec';
+
+export interface AiRepo {
+  /** Provjera limita (po satu, mjesečni budžet) i upis poziva. */
+  rezerviraj(limitUsd: number, poSatu: number): Promise<AiRezervacija>;
+  /** Stvarni trošak zadnje rezervacije (≤ 0,10 USD). */
+  evidentiraj(usd: number): Promise<void>;
+}
+
 export interface AdminPregled {
   kvota: { mjesec: string; potroseno: number; limit: number; povijest: { mjesec: string; jedinice: number }[] };
   brojke: {
@@ -115,6 +140,7 @@ export interface DbClient {
   gospodarstva: GospodarstvaRepo;
   cestice: CesticeRepo;
   operacije: OperacijeRepo;
+  ai: AiRepo;
   /** Za /api/health — jeftin upit koji dokazuje da je baza dostupna. */
   ping(): Promise<boolean>;
 }
