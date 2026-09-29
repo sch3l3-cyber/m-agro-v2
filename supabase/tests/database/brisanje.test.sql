@@ -13,10 +13,10 @@ insert into public.app_admins (user_id) values ('00000000-0000-0000-0000-0000000
 insert into public.gospodarstva (id, naziv, created_by) values
   ('00000000-0000-0000-0000-00000000bb01', 'Moje', '00000000-0000-0000-0000-0000000000b1'),
   ('00000000-0000-0000-0000-00000000bb02', 'Tuđe', '00000000-0000-0000-0000-0000000000b2');
+-- vlasnika upisuje trigger pri stvaranju gospodarstva; dodajemo samo b1 kao člana tuđeg
 insert into public.memberships (gospodarstvo_id, user_id, uloga) values
-  ('00000000-0000-0000-0000-00000000bb01', '00000000-0000-0000-0000-0000000000b1', 'vlasnik'),
-  ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-0000000000b2', 'vlasnik'),
-  ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-0000000000b1', 'clan');
+  ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-0000000000b1', 'clan')
+on conflict do nothing;
 
 create or replace function pg_temp.login(p_uid uuid) returns void language plpgsql as $$
 begin
