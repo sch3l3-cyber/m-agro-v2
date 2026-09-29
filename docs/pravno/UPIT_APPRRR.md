@@ -16,7 +16,9 @@ ARKOD prostornih podataka:
    ostale čestice istog nositelja na potvrdu? `jpaid` tuđih gospodarstava ne bismo pohranjivali ni prikazivali.
 3. Postoji li za redovito tjedno preuzimanje preporučeni način (WFS s pristupom, ATOM ili izravna poveznica) i
    ograničenje učestalosti koje trebamo poštivati?
-4. Mogu li poljoprivrednici sami izvesti svoje ARKOD čestice iz ARKOD preglednika ili AGRONET-a (npr. GeoJSON/SHP)?
+4. Što predstavlja atribut `jpaid` i postoji li (uz privolu poljoprivrednika) način da aplikacija dobije popis ARKOD
+   čestica prema MIBPG-u — npr. servis ili izvoz koji farmer sam pokrene?
+5. Mogu li poljoprivrednici sami izvesti svoje ARKOD čestice iz ARKOD preglednika ili AGRONET-a (npr. GeoJSON/SHP)?
 
 Unaprijed zahvaljujem.
 

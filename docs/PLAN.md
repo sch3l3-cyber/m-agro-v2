@@ -70,6 +70,8 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
   Tjedna provjera za 25 000 čestica ≈ 3,5 h usporenog rada u GitHub Actions — izvedivo, ali prije toga zatražiti WFS pristup.
 - **Nadogradnja (ADR-0011, čeka potvrdu APPRRR-a):** vlastiti ARKOD sloj iz javnog `land_parcels.gpkg` (PMTiles na R2)
   i „Dodaj cijelo gospodarstvo” — dodir jedne čestice nudi sve čestice istog nositelja (`jpaid`), uz potvrdu i zaštite privatnosti.
+- **MIBPG pri stvaranju gospodarstva** (ADR-0011 dopuna): učitavanje = MIBPG + dodir jedne svoje čestice; razine provjere
+  gospodarstva (neprovjereno/provjereno); jedinstvenost MIBPG-a samo za provjerena (danas je globalna → rizik da tuđinac „zauzme” MIBPG).
 - **Vrata:** novi testni farmer doda svoje čestice za < 5 minuta bez ikakve datoteke.
 
 ### Faza 7 — Kvaliteta podataka + privola (≈ 2 tjedna)
@@ -108,7 +110,7 @@ površina, nagib, vodozaštitna zona, Natura 2000) na dodir točke — bez nakna
 - **Vrata:** ≥ 300 čestica-sezona s prinosom po kulturi (realno 2027./2028.).
 
 ### Poslije (kad se pokaže potreba)
-ISOXML izvoz VRA karte za terminal rasipača · uvoz karte prinosa s kombajna · pristup agronomu (uloga „čitanje” +
+**Priprema Jedinstvenog zahtjeva** (kultura po ARKOD čestici, izvoz za AGRONET, provjera plodoreda i zona) — jak razlog za upis podataka · ISOXML izvoz VRA karte za terminal rasipača · uvoz karte prinosa s kombajna · pristup agronomu (uloga „čitanje” +
 pozivnica) · trošak/prihod po čestici · foto s polja po čestici · automatski ARKOD sync · SoilGrids.
 
 ## 5. Besplatni model pod pritiskom

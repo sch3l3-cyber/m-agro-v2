@@ -50,3 +50,30 @@ Status: predloženo (29. 9. 2026.) — čeka potvrdu uvjeta ponovne uporabe od A
 ## Posljedice
 - Najbolji onboarding na tržištu (dodir → cijelo gospodarstvo) i upozorenja od prvog dana — uz ozbiljnu obvezu prema privatnosti.
 - Nova infrastruktura: R2 bucket i tjedni posao; ovisnost o dostupnosti GPKG-a (pad → zadnja verzija ostaje).
+
+## Dopuna: MIBPG pri registraciji (29. 9. 2026., prijedlog vlasnika)
+
+Ideja: korisnik pri registraciji upiše MIBPG → aplikacija učita sve čestice gospodarstva → korisnik ima „svoj ARKOD
+preglednik” u kojem radi (operacije, NDVI, planiranje), a podaci su vidljivi samo njemu (i nama), ne drugim korisnicima.
+
+**Što stoji:**
+- Odvojenost podataka već postoji: RLS po gospodarstvu — čestice i operacije vidi samo član gospodarstva (pgTAP testovi).
+- MIBPG je koristan ulaz: `gospodarstva.mibpg` već postoji; služi za prepoznavanje gospodarstva i buduću integraciju s APPRRR-om.
+
+**Dva problema:**
+1. **Veza MIBPG → čestice nije u javnim podacima.** U ARKOD sloju nema MIBPG-a; postoji samo `jpaid` (13 znamenki, značenje
+   nepoznato — pitati APPRRR). Učitavanje po MIBPG-u bez dodira je moguće samo uz podatke/sučelje APPRRR-a (ne preko
+   farmerove prijave u ARKOD/AGRONET — to ne radimo).
+2. **Upravo zato što je MIBPG javan, nije dokaz identiteta.** Tko upiše tuđi MIBPG, postao bi „vlasnik” tuđih čestica.
+   Dodatno: današnji jedinstveni indeks `gospodarstva_mibpg_uq` znači da prvi koji upiše MIBPG blokira pravog vlasnika.
+
+**Odluka (prijedlog):**
+- MIBPG se traži pri stvaranju gospodarstva (nije obavezan), a čestice se učitavaju **MIBPG + dodir jedne svoje čestice**
+  (jpaid grupiranje, ADR-0011, nakon potvrde APPRRR-a). Dodir je dodatna provjera (farmer zna gdje su mu polja).
+- **Razine provjere gospodarstva:** `neprovjereno` (zadano) → `provjereno` (admin ručno za prve testere; kasnije jači način:
+  dokument iz AGRONET-a / Rješenje o upisu, ili e-Građani/NIAS ako se ikad isplati).
+- **Jedinstvenost MIBPG-a samo za provjerena gospodarstva** (izmjena indeksa); kod sukoba prednost ima provjereno, a
+  neprovjereno dobiva poruku da kontaktira podršku. Više korisnika istog OPG-a ide kroz pozivnice (članstvo), ne kroz ponovni upis MIBPG-a.
+- **Vrijednost „našeg ARKOD preglednika”:** uz evidenciju i NDVI — priprema Jedinstvenog zahtjeva (kultura po ARKOD čestici
+  za sezonu, izvoz popisa za prepisivanje u AGRONET), provjera plodoreda i ograničenja po zonama (pravila tek nakon provjere
+  važećih propisa). To je snažan razlog za upis podataka.
