@@ -22,10 +22,17 @@ GPKG, IZLAZ = sys.argv[1], sys.argv[2]
 LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = 16.9, 44.8, 19.5, 46.0
 POTREBNO = ["id", "jpaid", "land_use_id", "home_name", "area"]
 
-slojevi = [s for s, tip in pyogrio.list_layers(GPKG) if tip and "Polygon" in str(tip)]
-if not slojevi:
-    sys.exit("Nema poligonskog sloja u GPKG-u")
-sloj = slojevi[0]
+svi = [(str(s), str(t)) for s, t in pyogrio.list_layers(GPKG)]
+print("slojevi:", ", ".join(f"{s} ({t})" for s, t in svi))
+# preferiraj land_parcels, pa bilo koji s geometrijom (tip može biti 'Unknown'/'Geometry' u GPKG-u)
+imena = [s for s, _ in svi]
+if "land_parcels" in imena:
+    sloj = "land_parcels"
+else:
+    s_geom = [s for s, t in svi if t not in ("None", "")]
+    if not s_geom:
+        sys.exit("GPKG nema sloja s geometrijom")
+    sloj = s_geom[0]
 info = pyogrio.read_info(GPKG, layer=sloj)
 polja = list(info["fields"])
 print(f"sloj: {sloj}, CRS: {info['crs']}, stupci: {', '.join(polja)}")
