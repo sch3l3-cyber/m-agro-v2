@@ -40,7 +40,7 @@ M-AGRO → gore desno tvoj email (**Račun**) → *Uključi dvofaktorsku prijavu
 4. Javi Claudeu → on radi savjetnika (NDVI + operacije + prognoza kao kontekst, odgovori na hrvatskom).
 
 ## 7. Pravila privatnosti i uvjeti korištenja (odluka)
-Claude može napisati nacrt (GDPR: koji podaci, gdje se čuvaju — Supabase EU, Cloudflare; pravo na izvoz koji već postoji i na brisanje).
+Nacrt je napisan: `docs/pravno/PRAVILA_PRIVATNOSTI_NACRT.md` (GDPR: koji podaci, gdje se čuvaju — Supabase EU, Cloudflare; pravo na izvoz koji već postoji i na brisanje).
 Ti ga pregledaš/odobriš (po potrebi i pravnik) prije pozivanja testera.
 
 ## 8. Brisanje računa (odluka)
