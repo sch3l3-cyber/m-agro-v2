@@ -150,7 +150,7 @@ export function DodajCestice({ gospodarstvoId, cestice, onGotovo }: { gospodarst
         </div>
       )}
 
-      {bezArkoda.length > 0 && <PoveziSve gospodarstvoId={gospodarstvoId} cestice={bezArkoda} />}
+      {bezArkoda.length > 0 && stanje.s !== 'pregled' && <PoveziSve gospodarstvoId={gospodarstvoId} cestice={bezArkoda} />}
       <p className="text-xs text-zinc-500">Izvor granica: ARKOD, APPRRR. Nema tvog polja u ARKOD-u? Uvezi datoteku (gore: Uvezi).</p>
     </div>
   );
